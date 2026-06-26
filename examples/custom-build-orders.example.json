@@ -1,0 +1,47 @@
+{
+  "civRecommendations": {
+    "Generic": ["custom-20-pop-scouts"],
+    "Franks": ["custom-20-pop-scouts"]
+  },
+  "builds": [
+    {
+      "id": "custom-20-pop-scouts",
+      "name": "20 Pop Scouts",
+      "style": "Feudal pressure",
+      "summary": "Example custom build order imported by the dashboard.",
+      "civs": ["Generic", "Franks"],
+      "steps": [
+        {
+          "villagers": 6,
+          "title": "Sheep",
+          "instruction": "6 villagers on sheep and keep villager production constant."
+        },
+        {
+          "villagers": 7,
+          "title": "Wood",
+          "instruction": "Villagers 7-10 to wood and build a lumber camp."
+        },
+        {
+          "villagers": 11,
+          "title": "First boar",
+          "instruction": "Villager 11 lures the first boar."
+        },
+        {
+          "villagers": 14,
+          "title": "Berries",
+          "instruction": "Villagers 14-17 to berries and build a mill."
+        },
+        {
+          "villagers": 18,
+          "title": "Second boar",
+          "instruction": "Lure second boar and keep food under the town center."
+        },
+        {
+          "villagers": 20,
+          "title": "Click Feudal",
+          "instruction": "Click Feudal Age, build barracks during uptime, then add stable."
+        }
+      ]
+    }
+  ]
+}

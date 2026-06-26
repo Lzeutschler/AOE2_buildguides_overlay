@@ -1,0 +1,73 @@
+{
+  "civRecommendations": {
+    "Generic": ["generic-scouts", "generic-archers", "generic-fast-castle"],
+    "Britons": ["generic-archers", "generic-fast-castle"],
+    "Franks": ["generic-scouts", "generic-fast-castle"],
+    "Mongols": ["generic-scouts", "generic-fast-castle"],
+    "Mayans": ["generic-archers", "generic-fast-castle"],
+    "Chinese": ["generic-archers", "generic-scouts"],
+    "Huns": ["generic-scouts", "generic-archers"]
+  },
+  "builds": [
+    {
+      "id": "generic-scouts",
+      "name": "21 Pop Scouts",
+      "style": "Feudal pressure",
+      "summary": "Standard opening into scouts with smooth food economy.",
+      "civs": ["Generic", "Franks", "Huns", "Mongols", "Magyars"],
+      "steps": [
+        {"villagers": 6, "title": "Start", "instruction": "6 villagers on sheep. Keep town center producing villagers."},
+        {"villagers": 7, "title": "Lumber setup", "instruction": "Send villagers 7-10 to wood and build a lumber camp."},
+        {"villagers": 11, "title": "Boar timing", "instruction": "Villager 11 lures the first boar. Keep sheep villagers under TC."},
+        {"villagers": 12, "title": "Food stabilizes", "instruction": "Villagers 12-13 to boar/sheep food under the TC."},
+        {"villagers": 14, "title": "Mill berries", "instruction": "Send villagers 14-17 to berries and build a mill."},
+        {"villagers": 18, "title": "Second boar", "instruction": "Lure the second boar before the first is nearly finished."},
+        {"villagers": 19, "title": "More wood", "instruction": "Villagers 19-20 to wood. Seed farms with weak food villagers when wood allows."},
+        {"villagers": 21, "title": "Click Feudal", "instruction": "Click up to Feudal Age. Move 3-4 food villagers to wood during uptime."},
+        {"villagers": 22, "title": "Feudal buildings", "instruction": "Build barracks on the way up, then stable immediately in Feudal."},
+        {"villagers": 23, "title": "Scout pressure", "instruction": "Research double-bit axe, make scouts, add farms, then consider horse collar."}
+      ]
+    },
+    {
+      "id": "generic-archers",
+      "name": "22 Pop Archers",
+      "style": "Range pressure",
+      "summary": "Clean archer opening with early fletching pressure.",
+      "civs": ["Generic", "Britons", "Mayans", "Ethiopians", "Vietnamese"],
+      "steps": [
+        {"villagers": 6, "title": "Start", "instruction": "6 villagers on sheep and constant villager production."},
+        {"villagers": 7, "title": "Wood core", "instruction": "Villagers 7-10 to wood with a lumber camp."},
+        {"villagers": 11, "title": "First boar", "instruction": "Villager 11 lures first boar, then continue food under TC."},
+        {"villagers": 12, "title": "Boar/sheep", "instruction": "Villagers 12-13 gather food under the TC."},
+        {"villagers": 14, "title": "Berries", "instruction": "Villagers 14-17 to berries with a mill."},
+        {"villagers": 18, "title": "Second boar", "instruction": "Lure second boar and keep food income tight."},
+        {"villagers": 19, "title": "Gold setup", "instruction": "Villagers 19-20 to gold and build a mining camp."},
+        {"villagers": 21, "title": "Final Dark Age eco", "instruction": "Villager 21 to wood and villager 22 to gold or wood depending on resources."},
+        {"villagers": 22, "title": "Click Feudal", "instruction": "Click up to Feudal. Build barracks during uptime."},
+        {"villagers": 23, "title": "Two ranges", "instruction": "In Feudal, build one or two ranges, research double-bit axe, then fletching."},
+        {"villagers": 24, "title": "Pressure", "instruction": "Produce archers steadily, add blacksmith, keep adding farms behind it."}
+      ]
+    },
+    {
+      "id": "generic-fast-castle",
+      "name": "27+2 Fast Castle",
+      "style": "Castle timing",
+      "summary": "Safer economy-focused opening into a strong Castle Age timing.",
+      "civs": ["Generic", "Britons", "Franks", "Mayans", "Burgundians"],
+      "steps": [
+        {"villagers": 6, "title": "Start", "instruction": "6 villagers on sheep and keep TC working."},
+        {"villagers": 7, "title": "Wood line", "instruction": "Villagers 7-10 to wood with lumber camp."},
+        {"villagers": 11, "title": "First boar", "instruction": "Villager 11 lures first boar."},
+        {"villagers": 12, "title": "More food", "instruction": "Villagers 12-15 gather boar/sheep food."},
+        {"villagers": 16, "title": "Berries", "instruction": "Villagers 16-19 to berries with a mill."},
+        {"villagers": 20, "title": "Second boar", "instruction": "Lure second boar and avoid TC idle time."},
+        {"villagers": 21, "title": "Wood and farms", "instruction": "Villagers 21-24 to wood; start farms as wood allows."},
+        {"villagers": 25, "title": "Gold", "instruction": "Villagers 25-27 to gold and build a mining camp."},
+        {"villagers": 27, "title": "Click Feudal", "instruction": "Click Feudal. During uptime, balance toward farms and gold."},
+        {"villagers": 28, "title": "Market blacksmith", "instruction": "In Feudal, make 2 villagers, build market and blacksmith."},
+        {"villagers": 29, "title": "Click Castle", "instruction": "Click Castle Age when you have 800 food and 200 gold."},
+        {"villagers": 30, "title": "Castle transition", "instruction": "Add TCs, knights, monks, or unique unit plan based on matchup."}
+      ]
+    }
+  ]
+}

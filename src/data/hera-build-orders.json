@@ -1,0 +1,290 @@
+{
+  "civRecommendations": {
+    "Georgians": ["hera-georgians-healing-scout-rush"],
+    "Japanese": ["hera-japanese-maa-rush", "hera-feudal-drush", "hera-fishing-ship-build"],
+    "Ethiopians": ["hera-ethiopian-two-range-archers", "hera-one-range-archers"],
+    "Malians": ["hera-feudal-drush", "hera-one-stable-scouts", "hera-fishing-ship-build"],
+    "Lithuanians": ["hera-feudal-drush", "hera-korean-spear-skirm-rush", "hera-one-stable-scouts", "hera-fishing-ship-build"],
+    "Britons": ["hera-feudal-drush", "hera-one-range-archers"],
+    "Vikings": ["hera-feudal-drush", "hera-one-range-archers", "hera-fishing-ship-build"],
+    "Koreans": ["hera-korean-spear-skirm-rush"],
+    "Byzantines": ["hera-korean-spear-skirm-rush"],
+    "Franks": ["hera-one-stable-scouts"],
+    "Huns": ["hera-one-stable-scouts"],
+    "Magyars": ["hera-one-stable-scouts"],
+    "Mayans": ["hera-one-range-archers", "hera-fast-castle-unique-unit"],
+    "Tatars": ["hera-one-range-archers"],
+    "Italians": ["hera-fishing-ship-build"],
+    "Burgundians": ["hera-fast-castle-boom", "hera-fast-castle-unique-unit"],
+    "Poles": ["hera-fast-castle-boom"],
+    "Bohemians": ["hera-fast-castle-boom"],
+    "Portuguese": ["hera-fast-castle-boom"],
+    "Bengalis": ["hera-fast-castle-boom"],
+    "Armenians": ["hera-armenian-spear-fc-relics"],
+    "Spanish": ["hera-fast-castle-unique-unit"],
+    "Turks": ["hera-fast-castle-unique-unit", "hera-turk-fast-imperial"],
+    "Mongols": ["hera-fast-castle-unique-unit"],
+    "Generic": [
+      "hera-one-stable-scouts",
+      "hera-one-range-archers",
+      "hera-feudal-drush",
+      "hera-fast-castle-boom",
+      "hera-fast-castle-unique-unit"
+    ]
+  },
+  "builds": [
+    {
+      "id": "hera-georgians-healing-scout-rush",
+      "name": "Hera 17 Pop Georgians Healing Scout Rush",
+      "style": "Scout rush",
+      "summary": "Fast Georgian scout opening using the mule cart bonus, deer lures and a short Feudal Age into cavalry pressure.",
+      "civs": ["Georgians"],
+      "steps": [
+        {"villagers": 7, "title": "Sheep start", "instruction": "Send the first 7 villagers to sheep. Keep the TC producing."},
+        {"villagers": 8, "title": "First boar", "instruction": "Send the next villager to lure the first boar."},
+        {"villagers": 11, "title": "Food under TC", "instruction": "Add 3 more villagers to boar or sheep under the TC. Lure deer with the scout while the mule cart explores."},
+        {"villagers": 12, "title": "Mill berries", "instruction": "Send 1 villager to build a house, then make a mill on berries."},
+        {"villagers": 13, "title": "Second boar", "instruction": "Send 1 villager to lure the second boar."},
+        {"villagers": 16, "title": "Finish food setup", "instruction": "Add 3 more villagers to hunt under the TC, then either research Loom or make one extra villager."},
+        {"villagers": 17, "title": "Click Feudal", "instruction": "Research Feudal Age. On the way up, move 8 hunt villagers to the mule-cart woodline and 3 more to berries."},
+        {"villagers": 18, "title": "Barracks timing", "instruction": "At about 50-60 percent Feudal, send 2 villagers to build a barracks. Queue Loom if you skipped it."},
+        {"villagers": 19, "title": "Stable and upgrades", "instruction": "Build a stable, research Double-Bit Axe and start walling both sides with the stable builders."},
+        {"villagers": 20, "title": "Scout pressure", "instruction": "Make 3 scouts, harass, research Horse Collar and seed farms as wood allows."},
+        {"villagers": 21, "title": "Castle setup", "instruction": "After 13-14 farms, send the next 7 villagers to gold, make a mule cart and add a blacksmith."},
+        {"villagers": 22, "title": "Castle follow-up", "instruction": "Click Castle Age as soon as resources allow. Plan either 2-stable knights or castle plus Monaspa play."}
+      ]
+    },
+    {
+      "id": "hera-japanese-maa-rush",
+      "name": "Hera 18 Pop Japanese Man-at-Arms Rush",
+      "style": "Man-at-arms into archers",
+      "summary": "Very fast Japanese men-at-arms pressure followed by archers and early Fletching.",
+      "civs": ["Japanese"],
+      "steps": [
+        {"villagers": 6, "title": "Sheep start", "instruction": "Send 6 villagers to sheep and keep villager production constant."},
+        {"villagers": 8, "title": "First wood", "instruction": "Send 2 villagers to wood."},
+        {"villagers": 9, "title": "First boar", "instruction": "Send 1 villager to lure the first boar."},
+        {"villagers": 10, "title": "More boar food", "instruction": "Send 1 more villager to boar under the TC. Lure at least 2 deer."},
+        {"villagers": 11, "title": "House and hunt", "instruction": "Send 1 villager to make a house, then return to food under the TC."},
+        {"villagers": 13, "title": "Second boar window", "instruction": "Send the next 2 villagers to hunt under the TC and get the second boar during this time."},
+        {"villagers": 14, "title": "Forward barracks", "instruction": "Send 1 villager to build a barracks near the front of your base."},
+        {"villagers": 16, "title": "Food and Loom", "instruction": "Send 2 more villagers to food under the TC, then research Loom."},
+        {"villagers": 17, "title": "Click Feudal", "instruction": "Send 1 villager to wood and research Feudal Age. Move 2 hunt villagers to gold and make a mining camp."},
+        {"villagers": 18, "title": "Militia and range", "instruction": "Make 3 militia, send them forward, move 4 TC-food villagers to wood and add an archery range."},
+        {"villagers": 19, "title": "MAA upgrade", "instruction": "Research Man-at-Arms, add a blacksmith when affordable and research Double-Bit Axe."},
+        {"villagers": 20, "title": "Gold and berries", "instruction": "Send 2 villagers to gold, then 1 villager to berries and build a mill."},
+        {"villagers": 21, "title": "Fletching attack", "instruction": "Add farms and berries before sheep run out, prioritize Fletching, then group archers with remaining men-at-arms."}
+      ]
+    },
+    {
+      "id": "hera-ethiopian-two-range-archers",
+      "name": "Hera 19 Pop Ethiopian 2-Range Archers",
+      "style": "Team game flank archers",
+      "summary": "Aggressive Ethiopian two-range archer opening that sells stone for a faster Castle Age.",
+      "civs": ["Ethiopians"],
+      "steps": [
+        {"villagers": 6, "title": "Sheep start", "instruction": "Send 6 villagers to sheep."},
+        {"villagers": 8, "title": "Wood and house", "instruction": "Send 2 villagers to wood and build a house with one of them."},
+        {"villagers": 9, "title": "First boar", "instruction": "Send 1 villager to lure the first boar. Lure 1-3 deer if possible."},
+        {"villagers": 15, "title": "Food mass", "instruction": "Send the next 6 villagers to hunt under the TC and get the second boar during this time."},
+        {"villagers": 16, "title": "First gold", "instruction": "Send 1 villager to build a mining camp on gold."},
+        {"villagers": 18, "title": "Click Feudal", "instruction": "Send 2 more villagers to food under the TC, research Loom, then click Feudal Age."},
+        {"villagers": 19, "title": "Feudal transition", "instruction": "Move 7 TC-food villagers to lumber, 2 to build barracks and house, and 2 to straggler trees."},
+        {"villagers": 20, "title": "Two ranges", "instruction": "Build 2 archery ranges and start producing archers. Use one builder for blacksmith and one back to food."},
+        {"villagers": 25, "title": "Gold commitment", "instruction": "Send 7 villagers to gold. Move 2 straggler villagers back to food and get Fletching."},
+        {"villagers": 31, "title": "Berries and farms", "instruction": "Send 6 villagers to berries. As sheep run out, add farms until you have 7-8 farms."},
+        {"villagers": 36, "title": "Castle setup", "instruction": "Send 2 villagers to wood and 3 to gold, make a market, sell stone and click Castle Age when ready."},
+        {"villagers": 37, "title": "Castle upgrades", "instruction": "Research Double-Bit Axe, Gold Mining and optionally Horse Collar. Add a second lumber camp, then get Crossbow, Bodkin and Bow Saw."}
+      ]
+    },
+    {
+      "id": "hera-feudal-drush",
+      "name": "Hera 19 Pop Feudal Drush",
+      "style": "Drush pressure",
+      "summary": "Fast Feudal timing with 2 militia on the way up, then flexible follow-up based on scouting.",
+      "civs": ["Malians", "Lithuanians", "Japanese", "Britons", "Vikings"],
+      "steps": [
+        {"villagers": 6, "title": "Sheep start", "instruction": "Send 6 villagers to sheep."},
+        {"villagers": 9, "title": "Woodline", "instruction": "Send 3 villagers to wood."},
+        {"villagers": 10, "title": "First boar", "instruction": "Send 1 villager to lure the first boar."},
+        {"villagers": 11, "title": "House and hunt", "instruction": "Send 1 villager to make a house, then return to hunt under the TC. Lure deer if possible."},
+        {"villagers": 15, "title": "Second boar food", "instruction": "Send 4 villagers to hunt under the TC and get the second boar during this time."},
+        {"villagers": 16, "title": "Front barracks", "instruction": "Send 1 villager to build a forward-side barracks and a house next to it."},
+        {"villagers": 17, "title": "More food", "instruction": "Add 1 more villager to hunt under the TC."},
+        {"villagers": 18, "title": "Click Feudal", "instruction": "Send 1 villager to wood, research Loom, then click Feudal Age."},
+        {"villagers": 19, "title": "Make militia", "instruction": "Find the opponent, make 2 militia immediately and send them forward."},
+        {"villagers": 20, "title": "Eco shift", "instruction": "Move 4 TC-food villagers to lumber and 1 to berries to build a mill."},
+        {"villagers": 21, "title": "Harass and tech", "instruction": "Use the Feudal scout plus militia to harass, research Double-Bit Axe and optionally Horse Collar."},
+        {"villagers": 22, "title": "Choose follow-up", "instruction": "React to scouting: spears and archers versus stable, scouts or skirms versus range, or extra militia/range versus enemy MAA."}
+      ]
+    },
+    {
+      "id": "hera-korean-spear-skirm-rush",
+      "name": "Hera 19 Pop Korean Spear Skirm Rush",
+      "style": "Trash pressure",
+      "summary": "Flexible Feudal spear and skirmisher pressure that avoids early gold commitment.",
+      "civs": ["Koreans", "Byzantines", "Lithuanians"],
+      "steps": [
+        {"villagers": 6, "title": "Sheep start", "instruction": "Send 6 villagers to sheep."},
+        {"villagers": 8, "title": "Wood start", "instruction": "Send 2 villagers to wood."},
+        {"villagers": 9, "title": "First boar", "instruction": "Send 1 villager to lure the first boar."},
+        {"villagers": 11, "title": "Boar food", "instruction": "Send 2 more villagers to boar under the TC."},
+        {"villagers": 12, "title": "Mill berries", "instruction": "Send 1 villager to make a house, then a mill on berries."},
+        {"villagers": 13, "title": "Second boar", "instruction": "Send 1 villager to lure the second boar. Lure deer if possible."},
+        {"villagers": 15, "title": "More hunt", "instruction": "Send 2 more villagers to hunt under the TC."},
+        {"villagers": 18, "title": "Click Feudal", "instruction": "Send 3 more villagers to berries, research Loom, then click Feudal Age."},
+        {"villagers": 19, "title": "Double lumber", "instruction": "Send 3 villagers to the first lumber camp and 5 to make a second lumber camp."},
+        {"villagers": 20, "title": "Barracks and range", "instruction": "Build a barracks when affordable, then an archery range. Use straggler trees if wood is tight."},
+        {"villagers": 21, "title": "Spear skirm pressure", "instruction": "Make spears first, research Double-Bit Axe and Horse Collar, then make skirmishers and harass."},
+        {"villagers": 22, "title": "Farm and gold setup", "instruction": "Add farms toward 14-16, then send 7 villagers to gold, add blacksmith, get Fletching and finish walls."}
+      ]
+    },
+    {
+      "id": "hera-one-stable-scouts",
+      "name": "Hera 19 Pop 1-Stable Scouts",
+      "style": "Scout rush",
+      "summary": "Quick one-stable scout opening with walling behind and optional skirmisher transition.",
+      "civs": ["Franks", "Huns", "Lithuanians", "Magyars", "Malians"],
+      "steps": [
+        {"villagers": 6, "title": "Sheep start", "instruction": "Send 6 villagers to sheep."},
+        {"villagers": 8, "title": "Wood start", "instruction": "Send 2 villagers to wood."},
+        {"villagers": 9, "title": "First boar", "instruction": "Send 1 villager to lure the first boar."},
+        {"villagers": 10, "title": "Mill berries", "instruction": "Send 1 villager to make a house, then a mill on berries. Lure deer if possible."},
+        {"villagers": 16, "title": "Food mass", "instruction": "Send 6 villagers to hunt under the TC and get the second boar during this time."},
+        {"villagers": 18, "title": "Click Feudal", "instruction": "Send 2 villagers to wood, research Loom, then click Feudal Age."},
+        {"villagers": 19, "title": "Wood transition", "instruction": "Either send 4 villagers to the first lumber camp for aggression or 5 to a new lumber camp for safety."},
+        {"villagers": 20, "title": "Berries and barracks", "instruction": "Move 4 TC-food villagers to berries and 1 to build a barracks about 60 percent to Feudal."},
+        {"villagers": 21, "title": "Stable", "instruction": "Build a stable with 2 villagers, research Double-Bit Axe and Horse Collar."},
+        {"villagers": 22, "title": "Scout pressure", "instruction": "Use stable builders to wall, seed farms, make scouts and attack or defend as needed."},
+        {"villagers": 23, "title": "Adapt", "instruction": "Add 1-4 spears if worried about enemy scouts, or add a range for skirmishers if opponent is on archers/spears."},
+        {"villagers": 24, "title": "Castle plan", "instruction": "Add blacksmith, consider Bloodlines with 7-8 scouts and plan 2-stable knights or elite skirm in Castle Age."}
+      ]
+    },
+    {
+      "id": "hera-one-range-archers",
+      "name": "Hera 20 Pop 1-Range Archers",
+      "style": "Archer opening",
+      "summary": "Fast one-range archer opening that prioritizes Fletching and a clean Castle Age transition.",
+      "civs": ["Britons", "Mayans", "Ethiopians", "Tatars", "Vikings"],
+      "steps": [
+        {"villagers": 6, "title": "Sheep start", "instruction": "Send 6 villagers to sheep."},
+        {"villagers": 9, "title": "Woodline", "instruction": "Send 3 villagers to wood."},
+        {"villagers": 10, "title": "First boar", "instruction": "Send 1 villager to lure the first boar."},
+        {"villagers": 11, "title": "Mill berries", "instruction": "Send 1 villager to make a house, then a mill on berries. Lure deer if possible."},
+        {"villagers": 17, "title": "Food mass", "instruction": "Send 6 villagers to hunt under the TC and get the second boar during this time."},
+        {"villagers": 19, "title": "Click Feudal", "instruction": "Send 2 villagers to wood, research Loom, then click Feudal Age."},
+        {"villagers": 20, "title": "Transition split", "instruction": "Move 5 villagers to a second lumber camp, 2 to stragglers, 1 to house into barracks, and 2 to gold."},
+        {"villagers": 21, "title": "Range production", "instruction": "Research Double-Bit Axe, skip Horse Collar for now, build one range and start archers."},
+        {"villagers": 22, "title": "Gold and blacksmith", "instruction": "Send 2 villagers to gold, then add a blacksmith and get Fletching when affordable."},
+        {"villagers": 23, "title": "Defense and farms", "instruction": "Make 1-4 spears if needed, move 4 more TC villagers to berries and start farms."},
+        {"villagers": 24, "title": "Wall and mass", "instruction": "Wall with 2-3 villagers while keeping archer production. Aim for 10-15 archers before Castle Age."},
+        {"villagers": 25, "title": "Castle transition", "instruction": "On the way to Castle, add a second production building, then get Crossbowman, Bodkin and Bow Saw."}
+      ]
+    },
+    {
+      "id": "hera-fishing-ship-build",
+      "name": "Hera 20 Pop + 3 Fishing Ship Build",
+      "style": "Hybrid or water opening",
+      "summary": "Dark Age dock with up to 3 fishing ships for hybrid and water maps.",
+      "civs": ["Italians", "Japanese", "Vikings", "Lithuanians", "Malians"],
+      "steps": [
+        {"villagers": 6, "title": "Sheep start", "instruction": "Send 6 villagers to sheep."},
+        {"villagers": 11, "title": "Wood heavy", "instruction": "Send 5 villagers to wood."},
+        {"villagers": 12, "title": "First boar", "instruction": "Send 1 villager to lure the first boar."},
+        {"villagers": 13, "title": "Dock", "instruction": "Send 1 villager to make a house, then a dock, then usually take shore fish."},
+        {"villagers": 14, "title": "More boar food", "instruction": "Add 1 villager to boar under the TC."},
+        {"villagers": 15, "title": "Second boar", "instruction": "Send 1 villager to lure the second boar."},
+        {"villagers": 16, "title": "Fishing ships", "instruction": "Make fishing ships up to 3 as soon as the dock is up. Add a house after the first fishing ship if needed."},
+        {"villagers": 19, "title": "Click Feudal", "instruction": "Add 4 more villagers to food under the TC, research Loom, then click Feudal Age."},
+        {"villagers": 20, "title": "Second lumber camp", "instruction": "On the way up, take 7 sheep villagers and make a second lumber camp on another woodline."},
+        {"villagers": 21, "title": "Water follow-up", "instruction": "For water aggression, move remaining sheep villagers to stragglers and send 3 to gold for galleys or 5 for fire galleys."},
+        {"villagers": 22, "title": "Land follow-up", "instruction": "On hybrid maps, add barracks on the way up. For archers, send 3 remaining sheep villagers to gold; for scouts or skirms, keep them on food."}
+      ]
+    },
+    {
+      "id": "hera-fast-castle-boom",
+      "name": "Hera 24+2 Pop Fast Castle Boom",
+      "style": "Fast Castle boom",
+      "summary": "Safe economy-focused fast Castle build for closed maps into extra TCs and eco upgrades.",
+      "civs": ["Burgundians", "Poles", "Bohemians", "Portuguese", "Bengalis"],
+      "steps": [
+        {"villagers": 6, "title": "Sheep start", "instruction": "Send 6 villagers to sheep."},
+        {"villagers": 9, "title": "Woodline", "instruction": "Send 3 villagers to wood."},
+        {"villagers": 10, "title": "First boar", "instruction": "Send 1 villager to lure the first boar."},
+        {"villagers": 11, "title": "Mill berries", "instruction": "Send 1 villager to make a house, then a mill on berries. Lure 3 deer into the TC if possible."},
+        {"villagers": 13, "title": "Second boar", "instruction": "Add 2 more villagers to hunt under the TC and grab the second boar."},
+        {"villagers": 17, "title": "Berries", "instruction": "Send 4 more villagers to berries. Seed 4 farms with sheep villagers when boars run out."},
+        {"villagers": 21, "title": "More wood", "instruction": "Send 4 more villagers to wood on one lumber camp."},
+        {"villagers": 23, "title": "Click Feudal", "instruction": "Send 2 villagers to gold and research Feudal Age. Send remaining TC-food villagers to straggler trees as food expires."},
+        {"villagers": 25, "title": "Feudal buildings", "instruction": "Send 1 villager to blacksmith and 2 to market, then send 2 more villagers to wood."},
+        {"villagers": 26, "title": "Click Castle", "instruction": "Research Castle Age, then research Double-Bit Axe and Horse Collar."},
+        {"villagers": 27, "title": "Boom start", "instruction": "Move 1 straggler villager to the lumber camp, seed farms with remaining straggler villagers and make a second TC on wood."},
+        {"villagers": 28, "title": "Third TC", "instruction": "Research Bow Saw, add another TC on secondary gold or main stone and use the market to balance resources."}
+      ]
+    },
+    {
+      "id": "hera-armenian-spear-fc-relics",
+      "name": "Hera 26+2 Armenian Spear FC Relic Control",
+      "style": "Spear rush into Fast Castle",
+      "summary": "Armenian dark-age spear harassment into walling, fortified church and fast relic control.",
+      "civs": ["Armenians"],
+      "steps": [
+        {"villagers": 6, "title": "Sheep start", "instruction": "Send 6 villagers to sheep."},
+        {"villagers": 10, "title": "Woodline", "instruction": "Send 4 villagers to wood."},
+        {"villagers": 11, "title": "First boar", "instruction": "Send 1 villager to lure the first boar."},
+        {"villagers": 12, "title": "Barracks waller", "instruction": "Send 1 villager to build house, barracks, house in front and start slow walling."},
+        {"villagers": 14, "title": "Boar food", "instruction": "Send 2 more villagers to boar under the TC. Lure deer if possible."},
+        {"villagers": 15, "title": "Second boar", "instruction": "Send 1 villager to lure the second boar."},
+        {"villagers": 17, "title": "Make spears", "instruction": "Send 2 more villagers to boar under the TC, then make 2-3 spears and harass with your scout."},
+        {"villagers": 23, "title": "Berries", "instruction": "Send 6 villagers to berries and build a mill. Move 2 hunt villagers to walling duty."},
+        {"villagers": 26, "title": "Gold and click Feudal", "instruction": "Send 3 villagers to gold, then move 5 food villagers to wood, start farms, research Loom and click Feudal."},
+        {"villagers": 27, "title": "Feudal buildings", "instruction": "When walling is done, send wallers to stragglers. Build market and blacksmith with 3 straggler villagers."},
+        {"villagers": 28, "title": "Click Castle", "instruction": "Send 2 more villagers to gold. If short, make 1-2 more villagers or use the market, then click Castle Age."},
+        {"villagers": 29, "title": "Relic control", "instruction": "Research Double-Bit Axe and Horse Collar, make a fortified church defensively, spam warrior priests for relics and research Bow Saw."}
+      ]
+    },
+    {
+      "id": "hera-fast-castle-unique-unit",
+      "name": "Hera 26+2 Fast Castle into Unique Unit",
+      "style": "Castle drop",
+      "summary": "Fast Castle build that drops a defensive or forward castle and transitions into strong unique units.",
+      "civs": ["Spanish", "Turks", "Mayans", "Burgundians", "Mongols"],
+      "steps": [
+        {"villagers": 6, "title": "Sheep start", "instruction": "Send 6 villagers to sheep."},
+        {"villagers": 9, "title": "Woodline", "instruction": "Send 3 villagers to wood."},
+        {"villagers": 10, "title": "First boar", "instruction": "Send 1 villager to lure the first boar."},
+        {"villagers": 11, "title": "Mill berries", "instruction": "Send 1 villager to make a house, then a mill on berries. Lure nearby deer if possible."},
+        {"villagers": 14, "title": "Second boar", "instruction": "Add 3 more villagers to hunt under the TC and grab the second boar."},
+        {"villagers": 18, "title": "Berries", "instruction": "Send 4 more villagers to berries. Seed 3 farms with hunt villagers so sheep lasts longer."},
+        {"villagers": 23, "title": "More wood", "instruction": "Send 5 more villagers to wood on one lumber camp."},
+        {"villagers": 25, "title": "Click Feudal", "instruction": "Send 2 villagers to gold and click Feudal Age."},
+        {"villagers": 26, "title": "Stone and buildings", "instruction": "When sheep runs out, send 4 villagers to stone and 3 to stragglers for market and blacksmith."},
+        {"villagers": 27, "title": "More stone", "instruction": "Send 2 villagers to stone."},
+        {"villagers": 28, "title": "Click Castle", "instruction": "Research Castle Age, then Double-Bit Axe and Horse Collar."},
+        {"villagers": 29, "title": "Castle drop", "instruction": "Drop the castle with stone villagers, research Bow Saw and send idle berry villagers to the resource you need."}
+      ]
+    },
+    {
+      "id": "hera-turk-fast-imperial",
+      "name": "Hera 29+2+2 Turk Fast Imperial",
+      "style": "Fast Imperial gunpowder",
+      "summary": "Turk fast Imperial build into immediate Hand Cannoneers and Bombard Cannons.",
+      "civs": ["Turks"],
+      "steps": [
+        {"villagers": 6, "title": "Sheep start", "instruction": "Send 6 villagers to sheep."},
+        {"villagers": 10, "title": "Woodline", "instruction": "Send 4 villagers to wood."},
+        {"villagers": 11, "title": "First boar", "instruction": "Send 1 villager to lure the first boar."},
+        {"villagers": 12, "title": "Mill berries", "instruction": "Send 1 villager to make a house, then a mill on berries."},
+        {"villagers": 14, "title": "More berries", "instruction": "Send 2 villagers to berries. Lure 3 deer into the TC."},
+        {"villagers": 15, "title": "Second boar", "instruction": "Send 1 villager to lure the second boar."},
+        {"villagers": 16, "title": "House to berries", "instruction": "Send 1 villager to make a house, then go to berries for 4 total."},
+        {"villagers": 19, "title": "More TC food", "instruction": "Send the next 3 villagers to gather food under the TC."},
+        {"villagers": 23, "title": "More wood", "instruction": "Send 4 villagers to wood and gradually farm with sheep villagers as sheep run out."},
+        {"villagers": 28, "title": "Click Feudal", "instruction": "Send 5 villagers to gold and click Feudal Age. As hunt finishes, move 1 to berries and 3 to stragglers."},
+        {"villagers": 30, "title": "Click Castle", "instruction": "Build blacksmith and market, send 2 more villagers to gold, then click Castle Age."},
+        {"villagers": 32, "title": "Click Imperial", "instruction": "Move Feudal builders to farms, research Double-Bit Axe and Gold Mining, sell 200 stone, send 2 more villagers to gold and click Imperial Age."},
+        {"villagers": 33, "title": "Gunpowder setup", "instruction": "Send 3 wood villagers to build siege workshop and monastery. Use market for barracks and 2 ranges, get first archer armor and make Hand Cannoneers plus Bombard Cannons."}
+      ]
+    }
+  ]
+}

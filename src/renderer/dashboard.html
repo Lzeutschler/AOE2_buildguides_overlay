@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AOE2 Build Overlay</title>
+    <link rel="stylesheet" href="./dashboard.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <h1>AOE2 Build Overlay</h1>
+          <p id="statusText">Waiting for state...</p>
+        </div>
+        <div class="status-pill" id="gameStatus">AOE2 offline</div>
+      </header>
+
+      <section class="layout">
+        <aside class="panel controls">
+          <div class="field">
+            <label for="civSelect">Civilization</label>
+            <select id="civSelect"></select>
+          </div>
+
+          <div class="field">
+            <label for="buildSelect">Build</label>
+            <select id="buildSelect"></select>
+          </div>
+
+          <div class="build-tools">
+            <div class="placement-header">
+              <strong>Custom builds</strong>
+              <span id="customBuildStatus">0 loaded</span>
+            </div>
+            <div class="tool-row">
+              <button id="importBuilds" type="button">Import</button>
+              <button id="exportBuilds" type="button">Export</button>
+            </div>
+            <span id="buildImportStatus" class="preview-status"></span>
+          </div>
+
+          <div class="field">
+            <label for="detectionMode">Detection</label>
+            <select id="detectionMode">
+              <option value="manual">Manual</option>
+              <option value="ocr">Screen OCR</option>
+            </select>
+          </div>
+
+          <div class="counter">
+            <button id="villagerMinus" type="button" aria-label="Decrease villager count">-</button>
+            <div>
+              <span id="villagerCount">6</span>
+              <small>villagers</small>
+            </div>
+            <button id="villagerPlus" type="button" aria-label="Increase villager count">+</button>
+          </div>
+
+          <div class="toggles">
+            <label><input type="checkbox" id="overlayEnabled" checked> Overlay</label>
+            <label><input type="checkbox" id="overlayClickThrough" checked> Click-through</label>
+            <label><input type="checkbox" id="overlayOnlyWhenAoe" checked> Overlay only with AOE2</label>
+            <label><input type="checkbox" id="autoShowDashboardOnAoe" checked> Auto-show on AOE2</label>
+            <label><input type="checkbox" id="hotkeysEnabled" checked> Hotkeys</label>
+            <label><input type="checkbox" id="launchAtLogin"> Start with Windows</label>
+          </div>
+
+          <div class="overlay-placement">
+            <div class="placement-header">
+              <strong>Overlay position</strong>
+              <span id="overlayPositionText">-</span>
+            </div>
+            <div class="nudge-grid">
+              <span></span>
+              <button id="overlayNudgeUp" type="button" aria-label="Move overlay up">Up</button>
+              <span></span>
+              <button id="overlayNudgeLeft" type="button" aria-label="Move overlay left">Left</button>
+              <button id="overlayResetPosition" type="button">Reset</button>
+              <button id="overlayNudgeRight" type="button" aria-label="Move overlay right">Right</button>
+              <span></span>
+              <button id="overlayNudgeDown" type="button" aria-label="Move overlay down">Down</button>
+              <span></span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="displaySelect">OCR display</label>
+            <select id="displaySelect"></select>
+          </div>
+
+          <div class="ocr-box">
+            <strong>OCR</strong>
+            <span id="ocrStatus">idle</span>
+            <code id="ocrText"></code>
+          </div>
+
+          <details class="calibration" open>
+            <summary>OCR calibration</summary>
+            <div class="ocr-settings">
+              <label>Interval ms<input id="ocrIntervalMs" type="number" min="500" max="10000" step="100"></label>
+              <label>Min confidence<input id="ocrMinConfidence" type="number" min="0" max="100" step="1"></label>
+              <label>Stable reads<input id="ocrStableReadCount" type="number" min="1" max="5" step="1"></label>
+              <label>Image scale<input id="ocrImageScale" type="number" min="1" max="6" step="1"></label>
+            </div>
+            <div class="region" data-region="villagerRegion">
+              <strong>Villager count</strong>
+              <div class="region-grid">
+                <label>X %<input id="villagerRegionX" type="number" min="0" max="100" step="0.1"></label>
+                <label>Y %<input id="villagerRegionY" type="number" min="0" max="100" step="0.1"></label>
+                <label>W %<input id="villagerRegionWidth" type="number" min="0.1" max="100" step="0.1"></label>
+                <label>H %<input id="villagerRegionHeight" type="number" min="0.1" max="100" step="0.1"></label>
+              </div>
+            </div>
+
+            <div class="region" data-region="civRegion">
+              <strong>Civilization</strong>
+              <div class="region-grid">
+                <label>X %<input id="civRegionX" type="number" min="0" max="100" step="0.1"></label>
+                <label>Y %<input id="civRegionY" type="number" min="0" max="100" step="0.1"></label>
+                <label>W %<input id="civRegionWidth" type="number" min="0.1" max="100" step="0.1"></label>
+                <label>H %<input id="civRegionHeight" type="number" min="0.1" max="100" step="0.1"></label>
+              </div>
+            </div>
+
+            <div class="preview-grid">
+              <figure>
+                <img id="villagerPreview" alt="Villager OCR crop preview">
+                <figcaption>Villager crop</figcaption>
+              </figure>
+              <figure>
+                <img id="civPreview" alt="Civilization OCR crop preview">
+                <figcaption>Civ crop</figcaption>
+              </figure>
+            </div>
+
+            <div class="calibration-tools" role="group" aria-label="OCR region tool">
+              <button id="selectVillagerRegion" class="tool-button active" type="button">Villagers</button>
+              <button id="selectCivRegion" class="tool-button" type="button">Civ</button>
+            </div>
+
+            <div class="screen-calibrator" id="screenCalibrator">
+              <img id="screenPreview" alt="Selected display screenshot">
+              <div id="villagerBox" class="region-box villager-box">
+                <span>Villagers</span>
+                <i></i>
+              </div>
+              <div id="civBox" class="region-box civ-box">
+                <span>Civ</span>
+                <i></i>
+              </div>
+            </div>
+
+            <span id="previewStatus" class="preview-status"></span>
+            <button id="refreshPreview" class="secondary-button" type="button">Refresh preview</button>
+            <button id="testOcr" class="secondary-button" type="button">Test OCR now</button>
+            <button id="resetCalibration" class="secondary-button" type="button">Reset regions</button>
+          </details>
+        </aside>
+
+        <section class="panel build-panel">
+          <div class="build-header">
+            <div>
+              <h2 id="buildName">Build</h2>
+              <p id="buildSummary"></p>
+            </div>
+            <div class="progress-ring">
+              <span id="progressPercent">0%</span>
+            </div>
+          </div>
+
+          <div class="next-step">
+            <span id="stepVillagers">6 vils</span>
+            <h3 id="stepTitle">Start</h3>
+            <p id="stepInstruction"></p>
+          </div>
+
+          <ol class="timeline" id="timeline"></ol>
+        </section>
+      </section>
+    </main>
+    <script src="./dashboard.js"></script>
+  </body>
+</html>
