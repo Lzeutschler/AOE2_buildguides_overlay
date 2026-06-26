@@ -15,7 +15,7 @@ async function recognize(message) {
   const ocrWorker = await getWorker();
   await ocrWorker.setParameters({
     tessedit_char_whitelist: message.whitelist,
-    tessedit_pageseg_mode: '7'
+    tessedit_pageseg_mode: message.pageSegMode || '7'
   });
 
   const result = await ocrWorker.recognize(message.dataUrl);

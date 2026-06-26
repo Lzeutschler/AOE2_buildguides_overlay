@@ -21,7 +21,7 @@ function render(state) {
   overlayCiv.textContent = state.civ;
   overlayVillagers.textContent = `${state.villagerCount} Dorfb.`;
   renderResources(state.resourceVillagers);
-  overlaySteps.replaceChildren(...steps.slice(0, 4).map((step, index) => renderStep(step, current, index)));
+  overlaySteps.replaceChildren(...steps.slice(0, 4).map((step, index) => renderStep(step, current, index, state.resourceVillagers)));
 }
 
 function renderResources(resourceVillagers) {
@@ -38,7 +38,7 @@ function renderResources(resourceVillagers) {
   }
 }
 
-function renderStep(step, current, index) {
+function renderStep(step, current, index, resourceVillagers) {
   const li = document.createElement('li');
   li.classList.toggle('current', step.villagers === current.villagers && index === 0);
 
@@ -49,7 +49,7 @@ function renderStep(step, current, index) {
   iconNode.src = icon.src;
   iconNode.alt = icon.label;
   const count = document.createElement('b');
-  count.textContent = `${step.villagers}`;
+  count.textContent = formatStepProgress(step, icon.key, index, resourceVillagers);
   villagers.append(iconNode, count);
 
   const body = document.createElement('div');
@@ -66,6 +66,15 @@ function renderStep(step, current, index) {
   return li;
 }
 
+function formatStepProgress(step, resourceKey, index, resourceVillagers) {
+  const value = resourceVillagers?.[resourceKey];
+  if (index === 0 && Number.isFinite(value) && Number.isFinite(step.villagers)) {
+    return `${value}/${step.villagers}`;
+  }
+
+  return `${step.villagers}`;
+}
+
 function getStepIcon(step) {
   const text = `${step?.title || ''} ${step?.instruction || ''}`.toLowerCase();
   const icons = {
@@ -76,16 +85,16 @@ function getStepIcon(step) {
   };
 
   if (/(gold|mining camp|mining|mine|relic)/.test(text)) {
-    return { src: icons.gold, label: 'Gold' };
+    return { key: 'gold', src: icons.gold, label: 'Gold' };
   }
 
   if (/(stone|castle|donjon|krepost)/.test(text)) {
-    return { src: icons.stone, label: 'Stein' };
+    return { key: 'stone', src: icons.stone, label: 'Stein' };
   }
 
   if (/(wood|lumber|barracks|stable|range|blacksmith|market|dock|house|wall|farm)/.test(text)) {
-    return { src: icons.wood, label: 'Holz' };
+    return { key: 'wood', src: icons.wood, label: 'Holz' };
   }
 
-  return { src: icons.food, label: 'Nahrung' };
+  return { key: 'food', src: icons.food, label: 'Nahrung' };
 }

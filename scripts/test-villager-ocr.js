@@ -18,16 +18,18 @@ const fs = require('node:fs');
 const { Worker } = require('node:worker_threads');
 const { app, nativeImage } = require('electron');
 const { preprocessDigits, DEFAULT_DIGIT_THRESHOLD } = require('../src/main/capture-provider');
+const { DEFAULT_OCR_REGIONS } = require('../src/main/ocr-defaults');
 
 const PROJECT_ROOT = path.join(__dirname, '..');
 const SCREENSHOT_DIR = path.join(PROJECT_ROOT, 'manuel_testing');
 const OUTPUT_DIR = path.join(SCREENSHOT_DIR, 'out');
 const WORKER_PATH = path.join(PROJECT_ROOT, 'src', 'main', 'ocr-worker-thread.js');
-const DIGIT_WHITELIST = '0123456789';
+const DIGIT_WHITELIST = '0123456789/';
 
-const DEFAULT_REGION = { x: 0.265, y: 0.004, width: 0.04, height: 0.06 };
-const DEFAULT_SCALES = [3, 4, 5];
+const DEFAULT_REGION = DEFAULT_OCR_REGIONS.villagerRegion;
+const DEFAULT_SCALES = [5, 6];
 const DEFAULT_THRESHOLDS = [120, 150, 180];
+const DEFAULT_PAGE_SEG_MODES = ['7', '13'];
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
@@ -36,7 +38,7 @@ async function main() {
     : listScreenshots();
 
   if (files.length === 0) {
-    console.log(`Keine PNG-Screenshots in ${SCREENSHOT_DIR} gefunden.`);
+    console.log(`Keine Screenshots in ${SCREENSHOT_DIR} gefunden.`);
     return;
   }
 
@@ -46,19 +48,20 @@ async function main() {
   const scales = options.scale ? [options.scale] : DEFAULT_SCALES;
   const thresholds = options.threshold ? [options.threshold] : DEFAULT_THRESHOLDS;
   const inverts = options.invert === undefined ? [true, false] : [options.invert];
+  const pageSegModes = options.pageSegMode ? [options.pageSegMode] : DEFAULT_PAGE_SEG_MODES;
 
   const ocr = new WorkerClient(WORKER_PATH);
 
   try {
     for (const file of files) {
-      await processFile({ file, region, scales, thresholds, inverts, ocr });
+      await processFile({ file, region, scales, thresholds, inverts, pageSegModes, ocr });
     }
   } finally {
     await ocr.dispose();
   }
 }
 
-async function processFile({ file, region, scales, thresholds, inverts, ocr }) {
+async function processFile({ file, region, scales, thresholds, inverts, pageSegModes, ocr }) {
   const image = nativeImage.createFromPath(file);
   if (image.isEmpty()) {
     console.log(`\n${path.basename(file)}: konnte Bild nicht laden.`);
@@ -73,19 +76,21 @@ async function processFile({ file, region, scales, thresholds, inverts, ocr }) {
   console.log(`Region px: x=${pixelRegion.x} y=${pixelRegion.y} w=${pixelRegion.width} h=${pixelRegion.height}`);
 
   const rows = [];
-  for (const invert of inverts) {
-    for (const scale of scales) {
-      for (const threshold of thresholds) {
-        const dataUrl = preprocessDigits(nativeImage, crop, { scale, threshold, invert });
-        const result = await ocr.recognize(dataUrl, DIGIT_WHITELIST);
-        const digits = (result.text || '').replace(/\D/g, '');
-        const outName = `${path.parse(file).name}_s${scale}_t${threshold}_${invert ? 'inv' : 'pos'}.png`;
-        saveDataUrl(dataUrl, path.join(OUTPUT_DIR, outName));
-        rows.push({
-          variant: `scale=${scale} thr=${threshold} ${invert ? 'invert' : 'direct'}`,
-          digits: digits || '-',
-          confidence: Math.round(result.confidence)
-        });
+  for (const pageSegMode of pageSegModes) {
+    for (const invert of inverts) {
+      for (const scale of scales) {
+        for (const threshold of thresholds) {
+          const dataUrl = preprocessDigits(nativeImage, crop, { scale, threshold, invert });
+          const result = await ocr.recognize(dataUrl, DIGIT_WHITELIST, pageSegMode);
+          const digits = (result.text || '').replace(/\D/g, '');
+          const outName = `${path.parse(file).name}_psm${pageSegMode}_s${scale}_t${threshold}_${invert ? 'inv' : 'pos'}.png`;
+          saveDataUrl(dataUrl, path.join(OUTPUT_DIR, outName));
+          rows.push({
+            variant: `psm=${pageSegMode} scale=${scale} thr=${threshold} ${invert ? 'invert' : 'direct'}`,
+            digits: digits || '-',
+            confidence: Math.round(result.confidence)
+          });
+        }
       }
     }
   }
@@ -122,12 +127,12 @@ class WorkerClient {
     });
   }
 
-  recognize(dataUrl, whitelist) {
+  recognize(dataUrl, whitelist, pageSegMode) {
     const id = this.nextId;
     this.nextId += 1;
     return new Promise((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
-      this.worker.postMessage({ type: 'recognize', id, dataUrl, whitelist });
+      this.worker.postMessage({ type: 'recognize', id, dataUrl, whitelist, pageSegMode });
     });
   }
 
@@ -139,7 +144,7 @@ class WorkerClient {
 function listScreenshots() {
   try {
     return fs.readdirSync(SCREENSHOT_DIR)
-      .filter((name) => name.toLowerCase().endsWith('.png'))
+      .filter((name) => /\.(png|jpe?g)$/i.test(name))
       .map((name) => path.join(SCREENSHOT_DIR, name));
   } catch {
     return [];
@@ -185,6 +190,9 @@ function parseArgs(args) {
       index += 1;
     } else if (arg === '--invert' && next) {
       options.invert = next === 'true' || next === '1';
+      index += 1;
+    } else if (arg === '--psm' && next) {
+      options.pageSegMode = next;
       index += 1;
     }
   }

@@ -7,6 +7,7 @@ const civData = require('../data/civilizations.json');
 const { Detector } = require('./detector');
 const { findBuild, getBuildProgress, getRecommendedBuilds } = require('./build-engine');
 const { loadSettings, saveSettings } = require('./settings-store');
+const { DEFAULT_OCR_SETTINGS, migrateLegacyOcrRegions } = require('./ocr-defaults');
 
 const defaultBuildData = combineBuildData(baseBuildData, heraBuildData);
 const OVERLAY_WIDTH = 430;
@@ -46,28 +47,7 @@ const appState = {
   hotkeysEnabled: true,
   launchAtLogin: false,
   selectedDisplayId: null,
-  ocr: {
-    enabled: false,
-    status: 'idle',
-    lastText: '',
-    lastError: '',
-    intervalMs: 5000,
-    civIntervalMs: 60000,
-    captureProvider: 'auto',
-    captureIntervalMs: 2500,
-    startupProbeIntervalMs: 1000,
-    civReadOnce: true,
-    minConfidence: 55,
-    stableReadCount: 2,
-    imageScale: 3,
-    topBarRegion: { x: 0, y: 0, width: 1, height: 0.075 },
-    villagerRegion: { x: 0.265, y: 0.004, width: 0.04, height: 0.06 },
-    civRegion: { x: 0.83, y: 0.006, width: 0.15, height: 0.065 },
-    foodVilRegion: { x: 0.052, y: 0.028, width: 0.028, height: 0.03 },
-    woodVilRegion: { x: 0.108, y: 0.028, width: 0.028, height: 0.03 },
-    goldVilRegion: { x: 0.164, y: 0.028, width: 0.028, height: 0.03 },
-    stoneVilRegion: { x: 0.22, y: 0.028, width: 0.028, height: 0.03 }
-  }
+  ocr: { ...DEFAULT_OCR_SETTINGS }
 };
 
 const persistedKeys = [
@@ -763,28 +743,29 @@ function updateStateFromSettings(settings) {
     appState.detectionMode = 'ocr';
   }
 
-  if (settings.ocr) {
+  const migratedOcr = migrateLegacyOcrRegions(settings.ocr);
+  if (migratedOcr) {
     appState.ocr = {
       ...appState.ocr,
-      ...settings.ocr,
-      intervalMs: clampNumber(settings.ocr.intervalMs, appState.ocr.intervalMs, 5000, 20000),
-      civIntervalMs: clampNumber(settings.ocr.civIntervalMs, appState.ocr.civIntervalMs, 15000, 300000),
-      captureProvider: ['auto', 'node-screenshots'].includes(settings.ocr.captureProvider)
-        ? settings.ocr.captureProvider
+      ...migratedOcr,
+      intervalMs: clampNumber(migratedOcr.intervalMs, appState.ocr.intervalMs, 5000, 20000),
+      civIntervalMs: clampNumber(migratedOcr.civIntervalMs, appState.ocr.civIntervalMs, 15000, 300000),
+      captureProvider: ['auto', 'node-screenshots'].includes(migratedOcr.captureProvider)
+        ? migratedOcr.captureProvider
         : appState.ocr.captureProvider,
-      captureIntervalMs: clampNumber(settings.ocr.captureIntervalMs, appState.ocr.captureIntervalMs, 1000, 10000),
-      startupProbeIntervalMs: clampNumber(settings.ocr.startupProbeIntervalMs, appState.ocr.startupProbeIntervalMs, 500, 10000),
-      civReadOnce: settings.ocr.civReadOnce === undefined ? appState.ocr.civReadOnce : Boolean(settings.ocr.civReadOnce),
-      minConfidence: clampNumber(settings.ocr.minConfidence, appState.ocr.minConfidence, 0, 100),
-      stableReadCount: clampNumber(settings.ocr.stableReadCount, appState.ocr.stableReadCount, 1, 5),
-      imageScale: clampNumber(settings.ocr.imageScale, appState.ocr.imageScale, 1, 6),
-      topBarRegion: normalizeRegion(settings.ocr.topBarRegion, appState.ocr.topBarRegion),
-      villagerRegion: normalizeRegion(settings.ocr.villagerRegion, appState.ocr.villagerRegion),
-      civRegion: normalizeRegion(settings.ocr.civRegion, appState.ocr.civRegion),
-      foodVilRegion: normalizeRegion(settings.ocr.foodVilRegion, appState.ocr.foodVilRegion),
-      woodVilRegion: normalizeRegion(settings.ocr.woodVilRegion, appState.ocr.woodVilRegion),
-      goldVilRegion: normalizeRegion(settings.ocr.goldVilRegion, appState.ocr.goldVilRegion),
-      stoneVilRegion: normalizeRegion(settings.ocr.stoneVilRegion, appState.ocr.stoneVilRegion)
+      captureIntervalMs: clampNumber(migratedOcr.captureIntervalMs, appState.ocr.captureIntervalMs, 1000, 10000),
+      startupProbeIntervalMs: clampNumber(migratedOcr.startupProbeIntervalMs, appState.ocr.startupProbeIntervalMs, 500, 10000),
+      civReadOnce: migratedOcr.civReadOnce === undefined ? appState.ocr.civReadOnce : Boolean(migratedOcr.civReadOnce),
+      minConfidence: clampNumber(migratedOcr.minConfidence, appState.ocr.minConfidence, 0, 100),
+      stableReadCount: clampNumber(migratedOcr.stableReadCount, appState.ocr.stableReadCount, 1, 5),
+      imageScale: clampNumber(migratedOcr.imageScale, appState.ocr.imageScale, 1, 6),
+      topBarRegion: normalizeRegion(migratedOcr.topBarRegion, appState.ocr.topBarRegion),
+      villagerRegion: normalizeRegion(migratedOcr.villagerRegion, appState.ocr.villagerRegion),
+      civRegion: normalizeRegion(migratedOcr.civRegion, appState.ocr.civRegion),
+      foodVilRegion: normalizeRegion(migratedOcr.foodVilRegion, appState.ocr.foodVilRegion),
+      woodVilRegion: normalizeRegion(migratedOcr.woodVilRegion, appState.ocr.woodVilRegion),
+      goldVilRegion: normalizeRegion(migratedOcr.goldVilRegion, appState.ocr.goldVilRegion),
+      stoneVilRegion: normalizeRegion(migratedOcr.stoneVilRegion, appState.ocr.stoneVilRegion)
     };
   }
 

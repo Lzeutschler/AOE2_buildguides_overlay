@@ -4,6 +4,7 @@ const path = require('node:path');
 const { promisify } = require('node:util');
 const { Worker } = require('node:worker_threads');
 const { createCaptureProvider, regionPercentToPixels } = require('./capture-provider');
+const { DEFAULT_OCR_SETTINGS, DIGIT_OCR_VARIANTS } = require('./ocr-defaults');
 
 const execFileAsync = promisify(execFile);
 
@@ -29,8 +30,9 @@ const RESOURCE_KEYS = ['food', 'wood', 'gold', 'stone'];
 // integer before the slash (current population) via parseLeadingCount.
 const VILLAGER_WHITELIST = '0123456789/';
 const CIV_WHITELIST = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ';
-const VILLAGER_DIAG_THRESHOLDS = [110, 140, 170, 200];
+const VILLAGER_DIAG_THRESHOLDS = [110, 140, 150, 170, 180, 200];
 const VILLAGER_DIAG_INVERTS = [true, false];
+const VILLAGER_DIAG_PAGE_SEG_MODES = ['7', '13'];
 
 class Detector extends EventEmitter {
   constructor({ desktopCapturer, screen, nativeImage, civs = [] }) {
@@ -68,30 +70,7 @@ class Detector extends EventEmitter {
       detectionMode: 'ocr',
       civ: 'Generic',
       selectedDisplayId: null,
-      ocr: {
-        enabled: false,
-        status: 'idle',
-        lastText: '',
-        lastError: '',
-        intervalMs: 5000,
-        civIntervalMs: 60000,
-        captureProvider: 'auto',
-        captureIntervalMs: 2500,
-        startupProbeIntervalMs: 1000,
-        civReadOnce: true,
-        minConfidence: 55,
-        stableReadCount: 2,
-        imageScale: 3,
-        topBarRegion: { x: 0, y: 0, width: 1, height: 0.075 },
-        villagerRegion: { x: 0.265, y: 0.004, width: 0.04, height: 0.06 },
-        civRegion: { x: 0.83, y: 0.006, width: 0.15, height: 0.065 },
-        // Rough top-bar defaults for the small villager-count number under each
-        // resource icon. These MUST be calibrated per resolution/UI scale.
-        foodVilRegion: { x: 0.052, y: 0.028, width: 0.028, height: 0.03 },
-        woodVilRegion: { x: 0.108, y: 0.028, width: 0.028, height: 0.03 },
-        goldVilRegion: { x: 0.164, y: 0.028, width: 0.028, height: 0.03 },
-        stoneVilRegion: { x: 0.22, y: 0.028, width: 0.028, height: 0.03 }
-      },
+      ocr: { ...DEFAULT_OCR_SETTINGS },
       resourceVillagers: { food: null, wood: null, gold: null, stone: null }
     };
     this.lastResourceHashes = { food: null, wood: null, gold: null, stone: null };
@@ -173,10 +152,10 @@ class Detector extends EventEmitter {
   // Trust a stable, confident OCR read directly (up or down) within sane bounds.
   // The stable-read requirement (N consecutive identical reads) plus the small
   // calibration box are what guard against noise like reading "121" for "12".
-  trustVillagerRead(ocrValue, isStable, confidence, minConfidence) {
+  trustVillagerRead(read, ocrValue, isStable, minConfidence) {
     const model = this.villagerModel;
 
-    if (!isStable || !Number.isFinite(ocrValue) || confidence < minConfidence) {
+    if (!isStable || !Number.isFinite(ocrValue) || !isAcceptedDigitRead(read, minConfidence)) {
       return model.value;
     }
 
@@ -207,7 +186,7 @@ class Detector extends EventEmitter {
       const accept = Number.isFinite(value)
         && value >= 0
         && value <= MAX_RESOURCE_VILLAGERS
-        && read.confidence >= minConfidence;
+        && isAcceptedDigitRead(read, minConfidence);
 
       result[key] = accept ? value : previous;
     }
@@ -330,7 +309,9 @@ class Detector extends EventEmitter {
 
       const isVillagerStable = villagerStable !== null && villagerStable !== undefined;
 
-      if (!nextState.inMatch && isVillagerStable && villagerResult.confidence >= nextState.ocr.minConfidence) {
+      const villagerAccepted = isAcceptedDigitRead(villagerResult, nextState.ocr.minConfidence);
+
+      if (!nextState.inMatch && isVillagerStable && villagerAccepted) {
         nextState.inMatch = true;
         nextState.sessionStatus = 'Match erkannt.';
         this.lastTopBarAt = Date.now();
@@ -357,9 +338,9 @@ class Detector extends EventEmitter {
         nextState.villagerCount = villagerResult.skipped
           ? this.villagerModel.value
           : this.trustVillagerRead(
+            villagerResult,
             villagerCount,
             isVillagerStable,
-            villagerResult.confidence,
             nextState.ocr.minConfidence
           );
         nextState.resourceVillagers = this.applyResourceVillagers(read.resourceVillagers, nextState.ocr.minConfidence);
@@ -404,14 +385,14 @@ class Detector extends EventEmitter {
         CIV_WHITELIST
       );
       const detectedCiv = matchKnownCiv(civResult.text, this.civs);
-      const villagerCount = parseLeadingCount(best.text);
+      const villagerCount = Number.isFinite(best.count) ? best.count : parseLeadingCount(best.text);
 
       const resources = {};
       for (const key of RESOURCE_KEYS) {
         const region = regionPercentToPixels(this.state.ocr[`${key}VilRegion`], imageSize);
-        const processed = frame.cropDataUrl(region, this.state.ocr.imageScale, { binarize: true });
-        const ocr = await this.recognize(processed, VILLAGER_WHITELIST);
-        const count = parseLeadingCount(ocr.text);
+        const processed = frame.cropDataUrl(region, this.state.ocr.imageScale, { binarize: true, invert: false });
+        const ocr = await this.recognizeDigitRegion(frame, region);
+        const count = Number.isFinite(ocr.count) ? ocr.count : parseLeadingCount(ocr.text);
         resources[key] = {
           raw: frame.cropDataUrl(region, 1),
           processed,
@@ -448,23 +429,25 @@ class Detector extends EventEmitter {
   }
 
   async diagnoseVillager(frame, villagerRegion) {
-    const scale = this.state.ocr.imageScale;
     const variants = [];
 
-    for (const invert of VILLAGER_DIAG_INVERTS) {
-      for (const threshold of VILLAGER_DIAG_THRESHOLDS) {
-        const image = frame.cropDataUrl(villagerRegion, scale, { binarize: true, threshold, invert });
-        const result = await this.recognize(image, VILLAGER_WHITELIST);
-        const count = parseLeadingCount(result.text);
-        variants.push({
-          label: `thr ${threshold} / ${invert ? 'invertiert' : 'direkt'}`,
-          threshold,
-          invert,
-          text: (result.text || '').trim(),
-          digits: Number.isFinite(count) ? count : null,
-          confidence: Math.round(result.confidence),
-          image
-        });
+    for (const pageSegMode of VILLAGER_DIAG_PAGE_SEG_MODES) {
+      for (const invert of VILLAGER_DIAG_INVERTS) {
+        for (const threshold of VILLAGER_DIAG_THRESHOLDS) {
+          const image = frame.cropDataUrl(villagerRegion, this.state.ocr.imageScale, { binarize: true, threshold, invert });
+          const result = await this.recognize(image, VILLAGER_WHITELIST, { pageSegMode });
+          const count = parseLeadingCount(result.text);
+          variants.push({
+            label: `psm ${pageSegMode} / thr ${threshold} / ${invert ? 'invertiert' : 'direkt'}`,
+            threshold,
+            invert,
+            pageSegMode,
+            text: (result.text || '').trim(),
+            digits: Number.isFinite(count) ? count : null,
+            confidence: Math.round(result.confidence),
+            image
+          });
+        }
       }
     }
 
@@ -479,6 +462,29 @@ class Detector extends EventEmitter {
     });
 
     return variants;
+  }
+
+  async recognizeDigitRegion(frame, region) {
+    const variants = [];
+
+    for (const variant of DIGIT_OCR_VARIANTS) {
+      const image = frame.cropDataUrl(region, variant.scale || this.state.ocr.imageScale, {
+        binarize: true,
+        threshold: variant.threshold,
+        invert: variant.invert
+      });
+      const result = await this.recognize(image, VILLAGER_WHITELIST, {
+        pageSegMode: variant.pageSegMode
+      });
+      const count = parseLeadingCount(result.text);
+      variants.push({
+        text: (result.text || '').trim(),
+        count: Number.isFinite(count) ? count : null,
+        confidence: Math.round(result.confidence)
+      });
+    }
+
+    return chooseDigitRead(variants);
   }
 
   getSelectedDisplay() {
@@ -511,13 +517,12 @@ class Detector extends EventEmitter {
     const villagerRaw = frame.cropRaw(villagerRegion);
     const villagerHash = hashBuffer(villagerRaw);
     const villagerChanged = villagerHash !== this.lastVillagerHash;
-    const shouldReadVillager = options.forceVillager || villagerChanged;
+    const villagerNeedsStableSample = this.stableReads.villager.count > 0
+      && this.stableReads.villager.count < this.state.ocr.stableReadCount;
+    const shouldReadVillager = options.forceVillager || villagerChanged || villagerNeedsStableSample;
     const shouldReadCiv = options.forceCiv || this.shouldRunCivOcr();
     const villagerResult = shouldReadVillager
-      ? await this.recognize(
-        frame.cropDataUrl(villagerRegion, this.state.ocr.imageScale, { binarize: true }),
-        VILLAGER_WHITELIST
-      )
+      ? await this.recognizeDigitRegion(frame, villagerRegion)
       : { text: '', confidence: 0, skipped: true };
 
     if (shouldReadVillager) {
@@ -527,7 +532,9 @@ class Detector extends EventEmitter {
     const civResult = shouldReadCiv
       ? await this.recognize(frame.cropDataUrl(civRegion, this.state.ocr.imageScale), CIV_WHITELIST)
       : { text: '', confidence: 0, skipped: true };
-    const villagerCount = parseLeadingCount(villagerResult.text);
+    const villagerCount = Number.isFinite(villagerResult.count)
+      ? villagerResult.count
+      : parseLeadingCount(villagerResult.text);
     const detectedCiv = civResult.skipped ? null : matchKnownCiv(civResult.text, this.civs);
     const averageConfidence = civResult.skipped
       ? Math.round(villagerResult.confidence)
@@ -569,11 +576,8 @@ class Detector extends EventEmitter {
       }
 
       this.lastResourceHashes[key] = hash;
-      const ocr = await this.recognize(
-        frame.cropDataUrl(region, this.state.ocr.imageScale, { binarize: true }),
-        VILLAGER_WHITELIST
-      );
-      const count = parseLeadingCount(ocr.text);
+      const ocr = await this.recognizeDigitRegion(frame, region);
+      const count = Number.isFinite(ocr.count) ? ocr.count : parseLeadingCount(ocr.text);
       result[key] = {
         count: Number.isFinite(count) ? count : null,
         confidence: Math.round(ocr.confidence),
@@ -626,12 +630,12 @@ class Detector extends EventEmitter {
     };
   }
 
-  async recognize(dataUrl, whitelist) {
+  async recognize(dataUrl, whitelist, options = {}) {
     if (!this.ocrWorker) {
       this.ocrWorker = new OcrWorkerClient();
     }
 
-    return this.ocrWorker.recognize(dataUrl, whitelist);
+    return this.ocrWorker.recognize(dataUrl, whitelist, options);
   }
 }
 
@@ -642,7 +646,7 @@ class OcrWorkerClient {
     this.pending = new Map();
   }
 
-  recognize(dataUrl, whitelist) {
+  recognize(dataUrl, whitelist, options = {}) {
     this.ensureWorker();
     const id = this.nextId;
     this.nextId += 1;
@@ -659,7 +663,8 @@ class OcrWorkerClient {
         type: 'recognize',
         id,
         dataUrl,
-        whitelist
+        whitelist,
+        pageSegMode: options.pageSegMode
       });
     });
   }
@@ -778,6 +783,48 @@ function updateStableRead(slot, value, requiredCount) {
   }
 
   return slot.count >= requiredCount ? value : null;
+}
+
+function chooseDigitRead(variants) {
+  const groups = new Map();
+
+  for (const variant of variants) {
+    if (!Number.isFinite(variant.count)) {
+      continue;
+    }
+
+    const group = groups.get(variant.count) || {
+      count: variant.count,
+      votes: 0,
+      confidence: 0,
+      text: variant.text
+    };
+    group.votes += 1;
+    if (variant.confidence >= group.confidence) {
+      group.confidence = variant.confidence;
+      group.text = variant.text;
+    }
+    groups.set(variant.count, group);
+  }
+
+  if (groups.size === 0) {
+    return { text: '', confidence: 0 };
+  }
+
+  return [...groups.values()].sort((a, b) => {
+    if (a.votes !== b.votes) {
+      return b.votes - a.votes;
+    }
+    return b.confidence - a.confidence;
+  })[0];
+}
+
+function isAcceptedDigitRead(read, minConfidence) {
+  if (!read || !Number.isFinite(read.count)) {
+    return false;
+  }
+
+  return read.confidence >= minConfidence || read.votes >= 2;
 }
 
 function hashBuffer(buffer) {
