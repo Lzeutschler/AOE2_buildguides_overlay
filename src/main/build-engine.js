@@ -31,7 +31,7 @@ function getBuildProgress(build, villagerCount) {
   const next = sorted.find((step) => step.villagers > villagerCount) || null;
   const upcoming = [
     current,
-    ...sorted.filter((step) => step.villagers > villagerCount).slice(0, 3)
+    ...sorted.filter((step) => step.villagers > current.villagers).slice(0, 3)
   ].filter(Boolean);
   const progress = Math.min(1, completed.length / sorted.length);
 

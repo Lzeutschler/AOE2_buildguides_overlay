@@ -4,7 +4,7 @@ const path = require('node:path');
 const { promisify } = require('node:util');
 const { Worker } = require('node:worker_threads');
 const { createCaptureProvider, regionPercentToPixels } = require('./capture-provider');
-const { DEFAULT_OCR_SETTINGS, DIGIT_OCR_VARIANTS } = require('./ocr-defaults');
+const { DEFAULT_OCR_SETTINGS, DIGIT_OCR_VARIANTS, RESOURCE_DIGIT_OCR_VARIANTS } = require('./ocr-defaults');
 
 const execFileAsync = promisify(execFile);
 
@@ -391,7 +391,12 @@ class Detector extends EventEmitter {
       for (const key of RESOURCE_KEYS) {
         const region = regionPercentToPixels(this.state.ocr[`${key}VilRegion`], imageSize);
         const processed = frame.cropDataUrl(region, this.state.ocr.imageScale, { binarize: true, invert: false });
-        const ocr = await this.recognizeDigitRegion(frame, region);
+        const ocr = await this.recognizeDigitRegion(frame, region, {
+          emptyAsZero: true,
+          maxCount: MAX_RESOURCE_VILLAGERS,
+          preferHigherOnTie: true,
+          variants: RESOURCE_DIGIT_OCR_VARIANTS
+        });
         const count = Number.isFinite(ocr.count) ? ocr.count : parseLeadingCount(ocr.text);
         resources[key] = {
           raw: frame.cropDataUrl(region, 1),
@@ -464,10 +469,10 @@ class Detector extends EventEmitter {
     return variants;
   }
 
-  async recognizeDigitRegion(frame, region) {
+  async recognizeDigitRegion(frame, region, options = {}) {
     const variants = [];
 
-    for (const variant of DIGIT_OCR_VARIANTS) {
+    for (const variant of options.variants || DIGIT_OCR_VARIANTS) {
       const image = frame.cropDataUrl(region, variant.scale || this.state.ocr.imageScale, {
         binarize: true,
         threshold: variant.threshold,
@@ -484,7 +489,7 @@ class Detector extends EventEmitter {
       });
     }
 
-    return chooseDigitRead(variants);
+    return chooseDigitRead(variants, options);
   }
 
   getSelectedDisplay() {
@@ -576,7 +581,12 @@ class Detector extends EventEmitter {
       }
 
       this.lastResourceHashes[key] = hash;
-      const ocr = await this.recognizeDigitRegion(frame, region);
+      const ocr = await this.recognizeDigitRegion(frame, region, {
+        emptyAsZero: true,
+        maxCount: MAX_RESOURCE_VILLAGERS,
+        preferHigherOnTie: true,
+        variants: RESOURCE_DIGIT_OCR_VARIANTS
+      });
       const count = Number.isFinite(ocr.count) ? ocr.count : parseLeadingCount(ocr.text);
       result[key] = {
         count: Number.isFinite(count) ? count : null,
@@ -785,11 +795,11 @@ function updateStableRead(slot, value, requiredCount) {
   return slot.count >= requiredCount ? value : null;
 }
 
-function chooseDigitRead(variants) {
+function chooseDigitRead(variants, options = {}) {
   const groups = new Map();
 
   for (const variant of variants) {
-    if (!Number.isFinite(variant.count)) {
+    if (!Number.isFinite(variant.count) || (Number.isFinite(options.maxCount) && variant.count > options.maxCount)) {
       continue;
     }
 
@@ -808,15 +818,26 @@ function chooseDigitRead(variants) {
   }
 
   if (groups.size === 0) {
-    return { text: '', confidence: 0 };
+    return options.emptyAsZero
+      ? { text: '0', count: 0, confidence: 0, votes: 0 }
+      : { text: '', confidence: 0 };
   }
 
-  return [...groups.values()].sort((a, b) => {
+  const winner = [...groups.values()].sort((a, b) => {
     if (a.votes !== b.votes) {
       return b.votes - a.votes;
     }
+    if (options.preferHigherOnTie && a.count !== b.count) {
+      return b.count - a.count;
+    }
     return b.confidence - a.confidence;
   })[0];
+
+  if (options.emptyAsZero && winner.votes < 2 && winner.confidence <= 0) {
+    return { text: '0', count: 0, confidence: 0, votes: 0 };
+  }
+
+  return winner;
 }
 
 function isAcceptedDigitRead(read, minConfidence) {
@@ -910,7 +931,16 @@ function getStartVillagers(civ) {
 function parseLeadingCount(text) {
   const cleaned = String(text || '');
   const beforeSlash = cleaned.split('/')[0];
-  const match = beforeSlash.match(/\d+/) || cleaned.match(/\d+/);
+  const compact = beforeSlash.replace(/\D/g, '');
+  if (compact) {
+    if (compact.length > 1 && compact.startsWith('0')) {
+      return 0;
+    }
+
+    return Number.parseInt(compact, 10);
+  }
+
+  const match = cleaned.match(/\d+/);
   return match ? Number.parseInt(match[0], 10) : NaN;
 }
 
