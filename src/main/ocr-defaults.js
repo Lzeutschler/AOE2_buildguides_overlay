@@ -2,10 +2,14 @@ const DEFAULT_OCR_REGIONS = {
   topBarRegion: { x: 0, y: 0, width: 1, height: 0.075 },
   villagerRegion: { x: 0.224, y: 0.029, width: 0.018, height: 0.022 },
   civRegion: { x: 0.83, y: 0.006, width: 0.15, height: 0.065 },
-  woodVilRegion: { x: 0.01875, y: 0.034, width: 0.0095, height: 0.017 },
-  foodVilRegion: { x: 0.067, y: 0.033, width: 0.023, height: 0.018 },
-  goldVilRegion: { x: 0.123, y: 0.034, width: 0.01, height: 0.017 },
-  stoneVilRegion: { x: 0.178, y: 0.034, width: 0.01, height: 0.017 }
+  // Per-resource villager counts share one baseline, glyph size and an equal
+  // horizontal spacing (the small white number on each icon's bottom-right
+  // corner). Calibrated as a single template from the 2560x1440 fixtures via
+  // scripts/calibrate-resource-regions.js: y=47 h=19 w=30, x stride ~135 px.
+  woodVilRegion: { x: 0.013281, y: 0.032639, width: 0.011719, height: 0.013194 },
+  foodVilRegion: { x: 0.066016, y: 0.032639, width: 0.011719, height: 0.013194 },
+  goldVilRegion: { x: 0.11875, y: 0.032639, width: 0.011719, height: 0.013194 },
+  stoneVilRegion: { x: 0.171484, y: 0.032639, width: 0.011719, height: 0.013194 }
 };
 
 const LEGACY_OCR_REGIONS = {
@@ -32,6 +36,15 @@ const INTERMEDIATE_OCR_REGIONS = {
 const RECENT_OCR_REGIONS = {
   goldVilRegion: { x: 0.13, y: 0.034, width: 0.0095, height: 0.017 },
   stoneVilRegion: { x: 0.185, y: 0.034, width: 0.0095, height: 0.017 }
+};
+
+// The hand-placed resource regions used before the equal-spacing template was
+// calibrated. Saved configs still on these jump to the new tight defaults.
+const PRE_TEMPLATE_OCR_REGIONS = {
+  woodVilRegion: { x: 0.01875, y: 0.034, width: 0.0095, height: 0.017 },
+  foodVilRegion: { x: 0.067, y: 0.033, width: 0.023, height: 0.018 },
+  goldVilRegion: { x: 0.123, y: 0.034, width: 0.01, height: 0.017 },
+  stoneVilRegion: { x: 0.178, y: 0.034, width: 0.01, height: 0.017 }
 };
 
 const SWAPPED_FOOD_WOOD_REGION_PAIRS = [
@@ -117,6 +130,7 @@ function migrateLegacyOcrRegions(ocr) {
       || sameRegion(migrated[key], PREVIOUS_OCR_REGIONS[key])
       || sameRegion(migrated[key], INTERMEDIATE_OCR_REGIONS[key])
       || sameRegion(migrated[key], RECENT_OCR_REGIONS[key])
+      || sameRegion(migrated[key], PRE_TEMPLATE_OCR_REGIONS[key])
     ) {
       migrated[key] = DEFAULT_OCR_REGIONS[key];
     }

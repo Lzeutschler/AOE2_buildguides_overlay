@@ -29,10 +29,10 @@ const FIXTURES = [
 
 const EXPECTED_PIXELS_2560 = {
   villagerRegion: { x: 573, y: 42, width: 46, height: 32 },
-  woodVilRegion: { x: 48, y: 49, width: 24, height: 24 },
-  foodVilRegion: { x: 172, y: 48, width: 59, height: 26 },
-  goldVilRegion: { x: 315, y: 49, width: 26, height: 24 },
-  stoneVilRegion: { x: 456, y: 49, width: 26, height: 24 }
+  woodVilRegion: { x: 34, y: 47, width: 30, height: 19 },
+  foodVilRegion: { x: 169, y: 47, width: 30, height: 19 },
+  goldVilRegion: { x: 304, y: 47, width: 30, height: 19 },
+  stoneVilRegion: { x: 439, y: 47, width: 30, height: 19 }
 };
 
 async function main() {

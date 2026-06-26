@@ -195,10 +195,10 @@ const defaultRegions = {
   topBarRegion: { x: 0, y: 0, width: 1, height: 0.075 },
   villagerRegion: { x: 0.224, y: 0.029, width: 0.018, height: 0.022 },
   civRegion: { x: 0.83, y: 0.006, width: 0.15, height: 0.065 },
-  woodVilRegion: { x: 0.01875, y: 0.034, width: 0.0095, height: 0.017 },
-  foodVilRegion: { x: 0.067, y: 0.033, width: 0.023, height: 0.018 },
-  goldVilRegion: { x: 0.123, y: 0.034, width: 0.01, height: 0.017 },
-  stoneVilRegion: { x: 0.178, y: 0.034, width: 0.01, height: 0.017 }
+  woodVilRegion: { x: 0.013281, y: 0.032639, width: 0.011719, height: 0.013194 },
+  foodVilRegion: { x: 0.066016, y: 0.032639, width: 0.011719, height: 0.013194 },
+  goldVilRegion: { x: 0.11875, y: 0.032639, width: 0.011719, height: 0.013194 },
+  stoneVilRegion: { x: 0.171484, y: 0.032639, width: 0.011719, height: 0.013194 }
 };
 
 const defaultOcrSettings = {
