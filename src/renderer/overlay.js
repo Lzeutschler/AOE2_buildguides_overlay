@@ -1,6 +1,13 @@
 const overlayCiv = document.querySelector('#overlayCiv');
 const overlayVillagers = document.querySelector('#overlayVillagers');
 const overlaySteps = document.querySelector('#overlaySteps');
+const overlayResources = document.querySelector('#overlayResources');
+const resourceCells = {
+  food: document.querySelector('#resFood'),
+  wood: document.querySelector('#resWood'),
+  gold: document.querySelector('#resGold'),
+  stone: document.querySelector('#resStone')
+};
 
 window.aoeOverlay.getState().then(render);
 window.aoeOverlay.onState(render);
@@ -13,7 +20,22 @@ function render(state) {
 
   overlayCiv.textContent = state.civ;
   overlayVillagers.textContent = `${state.villagerCount} Dorfb.`;
+  renderResources(state.resourceVillagers);
   overlaySteps.replaceChildren(...steps.slice(0, 4).map((step, index) => renderStep(step, current, index)));
+}
+
+function renderResources(resourceVillagers) {
+  const hasAny = resourceVillagers
+    && ['food', 'wood', 'gold', 'stone'].some((key) => Number.isFinite(resourceVillagers[key]));
+  overlayResources.hidden = !hasAny;
+  if (!hasAny) {
+    return;
+  }
+
+  for (const key of Object.keys(resourceCells)) {
+    const value = resourceVillagers[key];
+    resourceCells[key].textContent = Number.isFinite(value) ? String(value) : '-';
+  }
 }
 
 function renderStep(step, current, index) {

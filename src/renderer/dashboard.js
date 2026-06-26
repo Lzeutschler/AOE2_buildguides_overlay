@@ -38,12 +38,21 @@ const elements = {
   ocrStatus: $('#ocrStatus'),
   ocrText: $('#ocrText'),
   refreshPreview: $('#refreshPreview'),
+  refreshPreview2: $('#refreshPreview2'),
   testOcr: $('#testOcr'),
+  ocrLiveTest: $('#ocrLiveTest'),
   resetCalibration: $('#resetCalibration'),
   previewStatus: $('#previewStatus'),
   topBarPreview: $('#topBarPreview'),
   villagerPreview: $('#villagerPreview'),
+  villagerProcessedPreview: $('#villagerProcessedPreview'),
   civPreview: $('#civPreview'),
+  ocrVariants: $('#ocrVariants'),
+  calibZoom: $('#calibZoom'),
+  calibZoomValue: $('#calibZoomValue'),
+  calibZoomReset: $('#calibZoomReset'),
+  calibratorViewport: $('#calibratorViewport'),
+  calibLoupe: $('#calibLoupe'),
   ocrSettings: {
     captureProvider: $('#ocrCaptureProvider'),
     captureIntervalMs: $('#ocrCaptureIntervalMs'),
@@ -59,10 +68,30 @@ const elements = {
   selectTopBarRegion: $('#selectTopBarRegion'),
   selectVillagerRegion: $('#selectVillagerRegion'),
   selectCivRegion: $('#selectCivRegion'),
+  selectFoodVilRegion: $('#selectFoodVilRegion'),
+  selectWoodVilRegion: $('#selectWoodVilRegion'),
+  selectGoldVilRegion: $('#selectGoldVilRegion'),
+  selectStoneVilRegion: $('#selectStoneVilRegion'),
+  resourceProcessed: {
+    food: $('#foodVilProcessedPreview'),
+    wood: $('#woodVilProcessedPreview'),
+    gold: $('#goldVilProcessedPreview'),
+    stone: $('#stoneVilProcessedPreview')
+  },
+  resourceValues: {
+    food: $('#foodVilValue'),
+    wood: $('#woodVilValue'),
+    gold: $('#goldVilValue'),
+    stone: $('#stoneVilValue')
+  },
   regionBoxes: {
     topBarRegion: $('#topBarBox'),
     villagerRegion: $('#villagerBox'),
-    civRegion: $('#civBox')
+    civRegion: $('#civBox'),
+    foodVilRegion: $('#foodVilBox'),
+    woodVilRegion: $('#woodVilBox'),
+    goldVilRegion: $('#goldVilBox'),
+    stoneVilRegion: $('#stoneVilBox')
   },
   regions: {
     topBarRegion: {
@@ -82,6 +111,74 @@ const elements = {
       y: $('#civRegionY'),
       width: $('#civRegionWidth'),
       height: $('#civRegionHeight')
+    },
+    foodVilRegion: {
+      x: $('#foodVilRegionX'),
+      y: $('#foodVilRegionY'),
+      width: $('#foodVilRegionWidth'),
+      height: $('#foodVilRegionHeight')
+    },
+    woodVilRegion: {
+      x: $('#woodVilRegionX'),
+      y: $('#woodVilRegionY'),
+      width: $('#woodVilRegionWidth'),
+      height: $('#woodVilRegionHeight')
+    },
+    goldVilRegion: {
+      x: $('#goldVilRegionX'),
+      y: $('#goldVilRegionY'),
+      width: $('#goldVilRegionWidth'),
+      height: $('#goldVilRegionHeight')
+    },
+    stoneVilRegion: {
+      x: $('#stoneVilRegionX'),
+      y: $('#stoneVilRegionY'),
+      width: $('#stoneVilRegionWidth'),
+      height: $('#stoneVilRegionHeight')
+    }
+  },
+  regionsPx: {
+    topBarRegion: {
+      x: $('#topBarRegionXpx'),
+      y: $('#topBarRegionYpx'),
+      width: $('#topBarRegionWidthpx'),
+      height: $('#topBarRegionHeightpx')
+    },
+    villagerRegion: {
+      x: $('#villagerRegionXpx'),
+      y: $('#villagerRegionYpx'),
+      width: $('#villagerRegionWidthpx'),
+      height: $('#villagerRegionHeightpx')
+    },
+    civRegion: {
+      x: $('#civRegionXpx'),
+      y: $('#civRegionYpx'),
+      width: $('#civRegionWidthpx'),
+      height: $('#civRegionHeightpx')
+    },
+    foodVilRegion: {
+      x: $('#foodVilRegionXpx'),
+      y: $('#foodVilRegionYpx'),
+      width: $('#foodVilRegionWidthpx'),
+      height: $('#foodVilRegionHeightpx')
+    },
+    woodVilRegion: {
+      x: $('#woodVilRegionXpx'),
+      y: $('#woodVilRegionYpx'),
+      width: $('#woodVilRegionWidthpx'),
+      height: $('#woodVilRegionHeightpx')
+    },
+    goldVilRegion: {
+      x: $('#goldVilRegionXpx'),
+      y: $('#goldVilRegionYpx'),
+      width: $('#goldVilRegionWidthpx'),
+      height: $('#goldVilRegionHeightpx')
+    },
+    stoneVilRegion: {
+      x: $('#stoneVilRegionXpx'),
+      y: $('#stoneVilRegionYpx'),
+      width: $('#stoneVilRegionWidthpx'),
+      height: $('#stoneVilRegionHeightpx')
     }
   },
   buildName: $('#buildName'),
@@ -97,7 +194,11 @@ const elements = {
 const defaultRegions = {
   topBarRegion: { x: 0, y: 0, width: 1, height: 0.075 },
   villagerRegion: { x: 0.265, y: 0.004, width: 0.04, height: 0.06 },
-  civRegion: { x: 0.83, y: 0.006, width: 0.15, height: 0.065 }
+  civRegion: { x: 0.83, y: 0.006, width: 0.15, height: 0.065 },
+  foodVilRegion: { x: 0.052, y: 0.028, width: 0.028, height: 0.03 },
+  woodVilRegion: { x: 0.108, y: 0.028, width: 0.028, height: 0.03 },
+  goldVilRegion: { x: 0.164, y: 0.028, width: 0.028, height: 0.03 },
+  stoneVilRegion: { x: 0.22, y: 0.028, width: 0.028, height: 0.03 }
 };
 
 const defaultOcrSettings = {
@@ -108,12 +209,17 @@ const defaultOcrSettings = {
   civReadOnce: true,
   minConfidence: 55,
   stableReadCount: 2,
-  imageScale: 1
+  imageScale: 3
 };
 
 let currentState;
 let activeRegion = 'topBarRegion';
 let dragState = null;
+let calibZoomLevel = 1;
+let calibPan = { x: 0, y: 0 };
+let lastImageSize = null;
+let panState = null;
+let liveTestTimer = null;
 
 window.aoeOverlay.getState().then(render);
 window.aoeOverlay.onState(render);
@@ -264,11 +370,7 @@ for (const [regionName, inputs] of Object.entries(elements.regions)) {
 
 listen(elements.resetCalibration, 'click', () => {
   window.aoeOverlay.updateState({
-    ocr: {
-      topBarRegion: defaultRegions.topBarRegion,
-      villagerRegion: defaultRegions.villagerRegion,
-      civRegion: defaultRegions.civRegion
-    }
+    ocr: { ...defaultRegions }
   });
 });
 
@@ -292,6 +394,22 @@ listen(elements.selectCivRegion, 'click', () => {
   setActiveRegion('civRegion');
 });
 
+listen(elements.selectFoodVilRegion, 'click', () => {
+  setActiveRegion('foodVilRegion');
+});
+
+listen(elements.selectWoodVilRegion, 'click', () => {
+  setActiveRegion('woodVilRegion');
+});
+
+listen(elements.selectGoldVilRegion, 'click', () => {
+  setActiveRegion('goldVilRegion');
+});
+
+listen(elements.selectStoneVilRegion, 'click', () => {
+  setActiveRegion('stoneVilRegion');
+});
+
 for (const [regionName, box] of Object.entries(elements.regionBoxes)) {
   listen(box, 'pointerdown', (event) => {
     startRegionDrag(event, regionName, event.target.tagName.toLowerCase() === 'i' ? 'resize' : 'move');
@@ -299,6 +417,11 @@ for (const [regionName, box] of Object.entries(elements.regionBoxes)) {
 }
 
 listen(elements.screenCalibrator, 'pointerdown', (event) => {
+  if (event.button === 1 || event.button === 2) {
+    startPan(event);
+    return;
+  }
+
   if (event.target !== elements.screenPreview) {
     return;
   }
@@ -306,13 +429,109 @@ listen(elements.screenCalibrator, 'pointerdown', (event) => {
   startRegionDraw(event);
 });
 
+listen(elements.screenCalibrator, 'contextmenu', (event) => {
+  event.preventDefault();
+});
+
 window.addEventListener('pointermove', (event) => {
+  if (panState) {
+    updatePan(event);
+    return;
+  }
+
   updateRegionDrag(event);
+  updateLoupe(event);
 });
 
 window.addEventListener('pointerup', () => {
+  if (panState) {
+    finishPan();
+    return;
+  }
+
   finishRegionDrag();
 });
+
+listen(elements.screenCalibrator, 'pointerleave', () => {
+  hideLoupe();
+});
+
+if (elements.screenCalibrator) {
+  elements.screenCalibrator.addEventListener('wheel', (event) => {
+    event.preventDefault();
+    if (event.ctrlKey) {
+      const delta = event.deltaY < 0 ? 0.25 : -0.25;
+      zoomAtPoint(calibZoomLevel + delta, event);
+      return;
+    }
+
+    const next = event.shiftKey
+      ? { x: calibPan.x - event.deltaY, y: calibPan.y }
+      : { x: calibPan.x, y: calibPan.y - event.deltaY };
+    calibPan = clampPan(next.x, next.y);
+    applyCalibTransform();
+  }, { passive: false });
+}
+
+listen(elements.calibZoom, 'input', () => {
+  setCalibZoom(Number.parseFloat(elements.calibZoom.value) || 1);
+});
+
+listen(elements.calibZoomReset, 'click', () => {
+  calibPan = { x: 0, y: 0 };
+  setCalibZoom(1);
+});
+
+listen(elements.screenCalibrator, 'keydown', (event) => {
+  const deltas = {
+    ArrowLeft: [-1, 0],
+    ArrowRight: [1, 0],
+    ArrowUp: [0, -1],
+    ArrowDown: [0, 1]
+  };
+  const delta = deltas[event.key];
+  if (!delta || !lastImageSize) {
+    return;
+  }
+
+  event.preventDefault();
+  const stepPx = event.shiftKey ? 10 : 1;
+  const region = currentState?.ocr?.[activeRegion] || defaultRegions[activeRegion];
+  updateRegion(activeRegion, {
+    ...region,
+    x: clamp(region.x + (delta[0] * stepPx) / lastImageSize.width, 0, 1 - region.width),
+    y: clamp(region.y + (delta[1] * stepPx) / lastImageSize.height, 0, 1 - region.height)
+  });
+});
+
+listen(elements.refreshPreview2, 'click', async () => {
+  await refreshPreview();
+});
+
+listen(elements.ocrLiveTest, 'change', () => {
+  if (elements.ocrLiveTest.checked) {
+    startLiveTest();
+  } else {
+    stopLiveTest();
+  }
+});
+
+for (const [regionName, inputs] of Object.entries(elements.regionsPx)) {
+  for (const input of Object.values(inputs)) {
+    listen(input, 'change', () => {
+      const region = readRegionPx(regionName);
+      if (region) {
+        updateRegion(regionName, region);
+      }
+    });
+  }
+}
+
+for (const img of document.querySelectorAll('.preview-grid img')) {
+  listen(img, 'click', () => {
+    img.classList.toggle('enlarged');
+  });
+}
 
 function render(state) {
   currentState = state;
@@ -345,9 +564,10 @@ function render(state) {
   elements.ocrText.textContent = formatOcrText(state);
   writeOcrSettings(state.ocr || defaultOcrSettings);
   elements.ocrCivReadOnce.checked = Boolean(state.ocr?.civReadOnce ?? defaultOcrSettings.civReadOnce);
-  writeRegion('topBarRegion', state.ocr?.topBarRegion || defaultRegions.topBarRegion);
-  writeRegion('villagerRegion', state.ocr?.villagerRegion || defaultRegions.villagerRegion);
-  writeRegion('civRegion', state.ocr?.civRegion || defaultRegions.civRegion);
+  for (const regionName of Object.keys(elements.regions)) {
+    writeRegion(regionName, state.ocr?.[regionName] || defaultRegions[regionName]);
+  }
+  renderResourceVillagers(state.resourceVillagers);
   renderRegionBoxes(state);
 
   elements.buildName.textContent = state.build.name;
@@ -484,6 +704,49 @@ function writeRegion(regionName, region) {
   inputs.y.value = toPercent(region.y);
   inputs.width.value = toPercent(region.width);
   inputs.height.value = toPercent(region.height);
+  writeRegionPx(regionName, region);
+}
+
+function writeRegionPx(regionName, region) {
+  const inputs = elements.regionsPx[regionName];
+  if (!inputs) {
+    return;
+  }
+
+  if (!lastImageSize) {
+    for (const input of Object.values(inputs)) {
+      input.value = '';
+    }
+    return;
+  }
+
+  inputs.x.value = String(Math.round(region.x * lastImageSize.width));
+  inputs.y.value = String(Math.round(region.y * lastImageSize.height));
+  inputs.width.value = String(Math.round(region.width * lastImageSize.width));
+  inputs.height.value = String(Math.round(region.height * lastImageSize.height));
+}
+
+function readRegionPx(regionName) {
+  if (!lastImageSize) {
+    return null;
+  }
+
+  const inputs = elements.regionsPx[regionName];
+  const xPx = Number.parseFloat(inputs.x.value);
+  const yPx = Number.parseFloat(inputs.y.value);
+  const wPx = Number.parseFloat(inputs.width.value);
+  const hPx = Number.parseFloat(inputs.height.value);
+
+  if (![xPx, yPx, wPx, hPx].every(Number.isFinite)) {
+    return null;
+  }
+
+  return {
+    x: clamp(xPx / lastImageSize.width, 0, 1),
+    y: clamp(yPx / lastImageSize.height, 0, 1),
+    width: clamp(wPx / lastImageSize.width, 0.001, 1),
+    height: clamp(hPx / lastImageSize.height, 0.001, 1)
+  };
 }
 
 function readPercent(input) {
@@ -551,10 +814,21 @@ async function refreshPreview() {
     elements.villagerPreview.src = preview.villagerRegion;
     elements.civPreview.src = preview.civRegion;
     elements.screenPreview.src = preview.fullFrame;
+    if (preview.imageSize) {
+      lastImageSize = preview.imageSize;
+      refreshPixelInputs();
+    }
     elements.previewStatus.textContent = `Bildschirm ${preview.displayId} / ${preview.imageSize.width}x${preview.imageSize.height}`;
     renderRegionBoxes(currentState);
   } catch (error) {
     elements.previewStatus.textContent = error.message;
+  }
+}
+
+function refreshPixelInputs() {
+  for (const regionName of Object.keys(elements.regionsPx)) {
+    const region = currentState?.ocr?.[regionName] || defaultRegions[regionName];
+    writeRegionPx(regionName, region);
   }
 }
 
@@ -576,26 +850,133 @@ async function testOcrNow() {
     elements.topBarPreview.src = result.topBarRegion;
     elements.villagerPreview.src = result.villagerRegion;
     elements.civPreview.src = result.civRegion;
+    if (elements.villagerProcessedPreview) {
+      elements.villagerProcessedPreview.src = result.villagerProcessed || '';
+    }
+    if (result.imageSize) {
+      lastImageSize = result.imageSize;
+      refreshPixelInputs();
+    }
+    renderResourceTest(result.resources);
+    const resourceSummary = result.resources
+      ? ['food', 'wood', 'gold', 'stone']
+        .map((key) => `${key} ${result.resources[key]?.count ?? '-'}`)
+        .join(' ')
+      : '';
     elements.previewStatus.textContent = [
-      `OCR ${result.status}`,
+      `OCR ${translateOcrStatus(result.status)}`,
       `Dorfb. ${result.villagerCount ?? '-'}`,
-      `civ ${result.civ ?? '-'}`,
-      `Sicherheit ${result.confidence ?? 0}`,
+      `Sicherheit Dorfb. ${result.villagerConfidence ?? 0}`,
+      `civ ${result.civ ?? '-'} (${result.civConfidence ?? 0})`,
+      resourceSummary ? `Rohstoffe ${resourceSummary}` : '',
       `Rohtext "${result.villagerText || '-'}" / "${result.civText || '-'}"`
-    ].join(' / ');
+    ].filter(Boolean).join(' / ');
+    renderVariants(result.villagerVariants);
   } catch (error) {
     elements.previewStatus.textContent = error.message;
   }
 }
 
+function renderVariants(variants) {
+  if (!elements.ocrVariants) {
+    return;
+  }
+
+  if (!Array.isArray(variants) || variants.length === 0) {
+    elements.ocrVariants.replaceChildren();
+    return;
+  }
+
+  const rows = variants.map((variant, index) => {
+    const row = document.createElement('div');
+    row.className = 'variant-row';
+    if (index === 0) {
+      row.classList.add('best');
+    }
+
+    const img = document.createElement('img');
+    img.src = variant.image || '';
+    img.alt = variant.label;
+
+    const meta = document.createElement('div');
+    meta.className = 'variant-meta';
+    const label = document.createElement('span');
+    label.className = 'variant-label';
+    label.textContent = variant.label;
+    const value = document.createElement('span');
+    value.className = 'variant-value';
+    value.textContent = `"${variant.text || '-'}" -> ${variant.digits ?? '-'} (${variant.confidence})`;
+    meta.append(label, value);
+
+    row.append(img, meta);
+    return row;
+  });
+
+  elements.ocrVariants.replaceChildren(...rows);
+}
+
+function startLiveTest() {
+  stopLiveTest();
+  testOcrNow();
+  liveTestTimer = window.setInterval(() => {
+    testOcrNow();
+  }, 1500);
+}
+
+function stopLiveTest() {
+  if (liveTestTimer) {
+    window.clearInterval(liveTestTimer);
+    liveTestTimer = null;
+  }
+}
+
+const regionButtonMap = {
+  topBarRegion: 'selectTopBarRegion',
+  villagerRegion: 'selectVillagerRegion',
+  civRegion: 'selectCivRegion',
+  foodVilRegion: 'selectFoodVilRegion',
+  woodVilRegion: 'selectWoodVilRegion',
+  goldVilRegion: 'selectGoldVilRegion',
+  stoneVilRegion: 'selectStoneVilRegion'
+};
+
 function setActiveRegion(regionName) {
   activeRegion = regionName;
-  elements.selectTopBarRegion.classList.toggle('active', regionName === 'topBarRegion');
-  elements.selectVillagerRegion.classList.toggle('active', regionName === 'villagerRegion');
-  elements.selectCivRegion.classList.toggle('active', regionName === 'civRegion');
-  elements.regionBoxes.topBarRegion.classList.toggle('active', regionName === 'topBarRegion');
-  elements.regionBoxes.villagerRegion.classList.toggle('active', regionName === 'villagerRegion');
-  elements.regionBoxes.civRegion.classList.toggle('active', regionName === 'civRegion');
+  for (const [name, key] of Object.entries(regionButtonMap)) {
+    elements[key]?.classList.toggle('active', regionName === name);
+  }
+  for (const name of Object.keys(elements.regionBoxes)) {
+    elements.regionBoxes[name].classList.toggle('active', regionName === name);
+  }
+}
+
+function renderResourceVillagers(resourceVillagers) {
+  for (const key of ['food', 'wood', 'gold', 'stone']) {
+    const span = elements.resourceValues[key];
+    if (!span) {
+      continue;
+    }
+
+    const value = resourceVillagers?.[key];
+    span.textContent = Number.isFinite(value) ? String(value) : '-';
+  }
+}
+
+function renderResourceTest(resources) {
+  for (const key of ['food', 'wood', 'gold', 'stone']) {
+    const img = elements.resourceProcessed[key];
+    const span = elements.resourceValues[key];
+    const data = resources?.[key];
+    if (img) {
+      img.src = data?.processed || '';
+    }
+
+    if (span) {
+      span.textContent = data && Number.isFinite(data.count)
+        ? `${data.count} (${data.confidence})`
+        : '-';
+    }
+  }
 }
 
 function renderRegionBoxes(state) {
@@ -616,9 +997,10 @@ function renderRegionBoxes(state) {
 
 function startRegionDrag(event, regionName, mode) {
   event.preventDefault();
+  event.stopPropagation();
   setActiveRegion(regionName);
 
-  const bounds = elements.screenCalibrator.getBoundingClientRect();
+  const bounds = elements.calibratorViewport.getBoundingClientRect();
   const region = currentState?.ocr?.[regionName] || defaultRegions[regionName];
 
   dragState = {
@@ -635,7 +1017,7 @@ function startRegionDrag(event, regionName, mode) {
 
 function startRegionDraw(event) {
   event.preventDefault();
-  const bounds = elements.screenCalibrator.getBoundingClientRect();
+  const bounds = elements.calibratorViewport.getBoundingClientRect();
   const point = pointToPercent(event, bounds);
   setActiveRegion(activeRegion);
 
@@ -734,6 +1116,130 @@ function pointToPercent(event, bounds) {
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+function applyCalibTransform() {
+  if (!elements.calibratorViewport) {
+    return;
+  }
+
+  elements.calibratorViewport.style.transformOrigin = '0 0';
+  elements.calibratorViewport.style.transform = `translate(${calibPan.x}px, ${calibPan.y}px) scale(${calibZoomLevel})`;
+}
+
+function clampPan(x, y) {
+  if (!elements.screenCalibrator || !elements.calibratorViewport) {
+    return { x: 0, y: 0 };
+  }
+
+  const container = elements.screenCalibrator.getBoundingClientRect();
+  const baseW = elements.calibratorViewport.offsetWidth;
+  const baseH = elements.calibratorViewport.offsetHeight;
+  const scaledW = baseW * calibZoomLevel;
+  const scaledH = baseH * calibZoomLevel;
+  const minX = Math.min(0, container.width - scaledW);
+  const minY = Math.min(0, container.height - scaledH);
+
+  return {
+    x: Math.min(0, Math.max(minX, x)),
+    y: Math.min(0, Math.max(minY, y))
+  };
+}
+
+function setCalibZoom(level) {
+  calibZoomLevel = clamp(level, 1, 6);
+  if (elements.calibZoom) {
+    elements.calibZoom.value = String(calibZoomLevel);
+  }
+  if (elements.calibZoomValue) {
+    elements.calibZoomValue.textContent = `${calibZoomLevel.toFixed(1)}x`;
+  }
+  calibPan = clampPan(calibPan.x, calibPan.y);
+  applyCalibTransform();
+}
+
+function zoomAtPoint(level, event) {
+  const newZoom = clamp(level, 1, 6);
+  const container = elements.screenCalibrator.getBoundingClientRect();
+  const cx = event.clientX - container.left;
+  const cy = event.clientY - container.top;
+  const ix = (cx - calibPan.x) / calibZoomLevel;
+  const iy = (cy - calibPan.y) / calibZoomLevel;
+  calibZoomLevel = newZoom;
+  calibPan = clampPan(cx - ix * newZoom, cy - iy * newZoom);
+
+  if (elements.calibZoom) {
+    elements.calibZoom.value = String(calibZoomLevel);
+  }
+  if (elements.calibZoomValue) {
+    elements.calibZoomValue.textContent = `${calibZoomLevel.toFixed(1)}x`;
+  }
+  applyCalibTransform();
+}
+
+function startPan(event) {
+  event.preventDefault();
+  panState = {
+    startX: event.clientX,
+    startY: event.clientY,
+    origin: { ...calibPan }
+  };
+  elements.screenCalibrator.setPointerCapture?.(event.pointerId);
+  elements.screenCalibrator.classList.add('panning');
+}
+
+function updatePan(event) {
+  if (!panState) {
+    return;
+  }
+
+  const dx = event.clientX - panState.startX;
+  const dy = event.clientY - panState.startY;
+  calibPan = clampPan(panState.origin.x + dx, panState.origin.y + dy);
+  applyCalibTransform();
+}
+
+function finishPan() {
+  panState = null;
+  elements.screenCalibrator?.classList.remove('panning');
+}
+
+function updateLoupe(event) {
+  const loupe = elements.calibLoupe;
+  const img = elements.screenPreview;
+  if (!loupe || !img || !img.getAttribute('src')) {
+    return;
+  }
+
+  const container = elements.screenCalibrator.getBoundingClientRect();
+  const inside = event.clientX >= container.left && event.clientX <= container.right
+    && event.clientY >= container.top && event.clientY <= container.bottom;
+  if (!inside) {
+    hideLoupe();
+    return;
+  }
+
+  const viewport = elements.calibratorViewport.getBoundingClientRect();
+  const fx = clamp((event.clientX - viewport.left) / viewport.width, 0, 1);
+  const fy = clamp((event.clientY - viewport.top) / viewport.height, 0, 1);
+  const loupeZoom = 5;
+  const baseW = elements.calibratorViewport.offsetWidth;
+  const baseH = elements.calibratorViewport.offsetHeight;
+
+  loupe.style.display = 'block';
+  loupe.style.backgroundImage = `url("${img.getAttribute('src')}")`;
+  loupe.style.backgroundSize = `${baseW * loupeZoom}px ${baseH * loupeZoom}px`;
+  const lw = loupe.offsetWidth;
+  const lh = loupe.offsetHeight;
+  loupe.style.backgroundPosition = `${-(fx * baseW * loupeZoom - lw / 2)}px ${-(fy * baseH * loupeZoom - lh / 2)}px`;
+  loupe.style.left = `${clamp(event.clientX - container.left + 18, 0, container.width - lw)}px`;
+  loupe.style.top = `${clamp(event.clientY - container.top + 18, 0, container.height - lh)}px`;
+}
+
+function hideLoupe() {
+  if (elements.calibLoupe) {
+    elements.calibLoupe.style.display = 'none';
+  }
 }
 
 window.addEventListener('keydown', (event) => {

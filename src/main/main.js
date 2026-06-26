@@ -35,6 +35,7 @@ const appState = {
   },
   civ: 'Generic',
   villagerCount: 6,
+  resourceVillagers: { food: null, wood: null, gold: null, stone: null },
   selectedBuildId: 'generic-scouts',
   detectionMode: 'ocr',
   overlayEnabled: true,
@@ -58,10 +59,14 @@ const appState = {
     civReadOnce: true,
     minConfidence: 55,
     stableReadCount: 2,
-    imageScale: 1,
+    imageScale: 3,
     topBarRegion: { x: 0, y: 0, width: 1, height: 0.075 },
     villagerRegion: { x: 0.265, y: 0.004, width: 0.04, height: 0.06 },
-    civRegion: { x: 0.83, y: 0.006, width: 0.15, height: 0.065 }
+    civRegion: { x: 0.83, y: 0.006, width: 0.15, height: 0.065 },
+    foodVilRegion: { x: 0.052, y: 0.028, width: 0.028, height: 0.03 },
+    woodVilRegion: { x: 0.108, y: 0.028, width: 0.028, height: 0.03 },
+    goldVilRegion: { x: 0.164, y: 0.028, width: 0.028, height: 0.03 },
+    stoneVilRegion: { x: 0.22, y: 0.028, width: 0.028, height: 0.03 }
   }
 };
 
@@ -213,7 +218,11 @@ function updateState(partial, options = {}) {
       imageScale: clampNumber(ocr.imageScale, appState.ocr.imageScale, 1, 6),
       topBarRegion: normalizeRegion(ocr.topBarRegion, appState.ocr.topBarRegion),
       villagerRegion: normalizeRegion(ocr.villagerRegion, appState.ocr.villagerRegion),
-      civRegion: normalizeRegion(ocr.civRegion, appState.ocr.civRegion)
+      civRegion: normalizeRegion(ocr.civRegion, appState.ocr.civRegion),
+      foodVilRegion: normalizeRegion(ocr.foodVilRegion, appState.ocr.foodVilRegion),
+      woodVilRegion: normalizeRegion(ocr.woodVilRegion, appState.ocr.woodVilRegion),
+      goldVilRegion: normalizeRegion(ocr.goldVilRegion, appState.ocr.goldVilRegion),
+      stoneVilRegion: normalizeRegion(ocr.stoneVilRegion, appState.ocr.stoneVilRegion)
     };
   }
 
@@ -278,7 +287,7 @@ function applyOverlayPosition() {
 }
 
 function shouldShowOverlay() {
-  return appState.overlayEnabled && (!appState.overlayOnlyWhenAoe || appState.inMatch);
+  return appState.overlayEnabled && (!appState.overlayOnlyWhenAoe || appState.aoeRunning || appState.inMatch);
 }
 
 function createTray() {
@@ -503,6 +512,10 @@ app.whenReady().then(() => {
 
     if (appState.detectionMode === 'ocr' && Number.isFinite(detectorState.villagerCount)) {
       detectorUpdate.villagerCount = detectorState.villagerCount;
+    }
+
+    if (appState.detectionMode === 'ocr' && detectorState.resourceVillagers) {
+      detectorUpdate.resourceVillagers = detectorState.resourceVillagers;
     }
 
     if (appState.detectionMode === 'ocr' && detectorState.civ) {
@@ -767,7 +780,11 @@ function updateStateFromSettings(settings) {
       imageScale: clampNumber(settings.ocr.imageScale, appState.ocr.imageScale, 1, 6),
       topBarRegion: normalizeRegion(settings.ocr.topBarRegion, appState.ocr.topBarRegion),
       villagerRegion: normalizeRegion(settings.ocr.villagerRegion, appState.ocr.villagerRegion),
-      civRegion: normalizeRegion(settings.ocr.civRegion, appState.ocr.civRegion)
+      civRegion: normalizeRegion(settings.ocr.civRegion, appState.ocr.civRegion),
+      foodVilRegion: normalizeRegion(settings.ocr.foodVilRegion, appState.ocr.foodVilRegion),
+      woodVilRegion: normalizeRegion(settings.ocr.woodVilRegion, appState.ocr.woodVilRegion),
+      goldVilRegion: normalizeRegion(settings.ocr.goldVilRegion, appState.ocr.goldVilRegion),
+      stoneVilRegion: normalizeRegion(settings.ocr.stoneVilRegion, appState.ocr.stoneVilRegion)
     };
   }
 

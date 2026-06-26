@@ -12,12 +12,25 @@ class NodeScreenshotsFrame {
     return this.crop(region).toRawSync(true);
   }
 
-  cropDataUrl(region, scale = 1) {
+  cropDataUrl(region, scale = 1, options = {}) {
     const safeRegion = normalizePixelRegion(region, this.width, this.height);
     const png = this.crop(safeRegion).toPngSync(true);
     const factor = clampNumber(scale, 1, 1, 6);
 
-    if (!this.nativeImage || factor === 1) {
+    if (!this.nativeImage) {
+      return pngToDataUrl(png);
+    }
+
+    if (options.binarize) {
+      const image = this.nativeImage.createFromBuffer(png);
+      return preprocessDigits(this.nativeImage, image, {
+        scale: factor,
+        threshold: options.threshold,
+        invert: options.invert
+      });
+    }
+
+    if (factor === 1) {
       return pngToDataUrl(png);
     }
 
@@ -134,6 +147,48 @@ function normalizePixelRegion(region, maxWidth, maxHeight) {
   };
 }
 
+const DEFAULT_DIGIT_THRESHOLD = 150;
+
+function preprocessDigits(nativeImage, image, options = {}) {
+  if (!nativeImage || !image) {
+    return image ? image.toDataURL() : '';
+  }
+
+  const factor = clampNumber(options.scale, 3, 1, 8);
+  const threshold = clampNumber(options.threshold, DEFAULT_DIGIT_THRESHOLD, 0, 255);
+  const invert = options.invert === undefined ? true : Boolean(options.invert);
+  const size = image.getSize();
+  const resized = factor === 1
+    ? image
+    : image.resize({
+      width: Math.max(1, Math.round(size.width * factor)),
+      height: Math.max(1, Math.round(size.height * factor)),
+      quality: 'best'
+    });
+
+  const { width, height } = resized.getSize();
+  const bitmap = resized.toBitmap();
+
+  for (let index = 0; index + 3 < bitmap.length; index += 4) {
+    const blue = bitmap[index];
+    const green = bitmap[index + 1];
+    const red = bitmap[index + 2];
+    const luminance = 0.299 * red + 0.587 * green + 0.114 * blue;
+    const isBright = luminance >= threshold;
+    // AoE2 digits are bright text; map bright pixels to dark ink on a light
+    // background (invert) so Tesseract sees black-on-white.
+    const ink = invert ? !isBright : isBright;
+    const value = ink ? 255 : 0;
+    bitmap[index] = value;
+    bitmap[index + 1] = value;
+    bitmap[index + 2] = value;
+    bitmap[index + 3] = 255;
+  }
+
+  const output = nativeImage.createFromBitmap(bitmap, { width, height });
+  return output.toDataURL();
+}
+
 function pngToDataUrl(buffer) {
   return `data:image/png;base64,${Buffer.from(buffer).toString('base64')}`;
 }
@@ -170,5 +225,7 @@ function clampNumber(value, fallback, min, max) {
 module.exports = {
   createCaptureProvider,
   regionPercentToPixels,
-  pngToDataUrl
+  preprocessDigits,
+  pngToDataUrl,
+  DEFAULT_DIGIT_THRESHOLD
 };

@@ -17,6 +17,20 @@ const PROCESS_CHECK_INTERVAL_MS = 2500;
 const OCR_CAPTURE_MAX_WIDTH = 960;
 const OCR_TIMEOUT_MS = 8000;
 const MATCH_LOST_TIMEOUT_MS = 20000;
+const START_VILLAGERS_DEFAULT = 3;
+// Civ-specific overrides are deferred for now (everyone defaults to 3).
+const CIV_START_VILLAGERS = {};
+const MAX_VILLAGER_COUNT = 200;
+// Per-resource villager numbers (shown under each resource icon) are smaller; a
+// generous cap still rejects OCR garbage such as a stockpile amount like "200".
+const MAX_RESOURCE_VILLAGERS = 99;
+const RESOURCE_KEYS = ['food', 'wood', 'gold', 'stone'];
+// Slash is included so a population read like "9/15" can be split; we keep the
+// integer before the slash (current population) via parseLeadingCount.
+const VILLAGER_WHITELIST = '0123456789/';
+const CIV_WHITELIST = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ';
+const VILLAGER_DIAG_THRESHOLDS = [110, 140, 170, 200];
+const VILLAGER_DIAG_INVERTS = [true, false];
 
 class Detector extends EventEmitter {
   constructor({ desktopCapturer, screen, nativeImage, civs = [] }) {
@@ -35,6 +49,12 @@ class Detector extends EventEmitter {
     this.cachedAoeRunning = false;
     this.ocrInProgress = false;
     this.ocrWorker = null;
+    this.villagerModel = {
+      value: START_VILLAGERS_DEFAULT,
+      anchoredAt: 0,
+      lastAcceptedAt: 0
+    };
+    this.lastEmittedVillagerCount = null;
     this.stableReads = {
       villager: { value: null, count: 0 },
       civ: { value: null, count: 0 }
@@ -61,12 +81,21 @@ class Detector extends EventEmitter {
         civReadOnce: true,
         minConfidence: 55,
         stableReadCount: 2,
-        imageScale: 1,
+        imageScale: 3,
         topBarRegion: { x: 0, y: 0, width: 1, height: 0.075 },
         villagerRegion: { x: 0.265, y: 0.004, width: 0.04, height: 0.06 },
-        civRegion: { x: 0.83, y: 0.006, width: 0.15, height: 0.065 }
-      }
+        civRegion: { x: 0.83, y: 0.006, width: 0.15, height: 0.065 },
+        // Rough top-bar defaults for the small villager-count number under each
+        // resource icon. These MUST be calibrated per resolution/UI scale.
+        foodVilRegion: { x: 0.052, y: 0.028, width: 0.028, height: 0.03 },
+        woodVilRegion: { x: 0.108, y: 0.028, width: 0.028, height: 0.03 },
+        goldVilRegion: { x: 0.164, y: 0.028, width: 0.028, height: 0.03 },
+        stoneVilRegion: { x: 0.22, y: 0.028, width: 0.028, height: 0.03 }
+      },
+      resourceVillagers: { food: null, wood: null, gold: null, stone: null }
     };
+    this.lastResourceHashes = { food: null, wood: null, gold: null, stone: null };
+    this.lastResourceVillagers = { food: null, wood: null, gold: null, stone: null };
   }
 
   start() {
@@ -115,9 +144,76 @@ class Detector extends EventEmitter {
         imageScale: clampNumber(settings.ocr?.imageScale, this.state.ocr.imageScale, 1, 6),
         topBarRegion: normalizeRegion(settings.ocr?.topBarRegion, this.state.ocr.topBarRegion),
         villagerRegion: normalizeRegion(settings.ocr?.villagerRegion, this.state.ocr.villagerRegion),
-        civRegion: normalizeRegion(settings.ocr?.civRegion, this.state.ocr.civRegion)
+        civRegion: normalizeRegion(settings.ocr?.civRegion, this.state.ocr.civRegion),
+        foodVilRegion: normalizeRegion(settings.ocr?.foodVilRegion, this.state.ocr.foodVilRegion),
+        woodVilRegion: normalizeRegion(settings.ocr?.woodVilRegion, this.state.ocr.woodVilRegion),
+        goldVilRegion: normalizeRegion(settings.ocr?.goldVilRegion, this.state.ocr.goldVilRegion),
+        stoneVilRegion: normalizeRegion(settings.ocr?.stoneVilRegion, this.state.ocr.stoneVilRegion)
       }
     };
+
+    // A manual villager adjustment (overlay +/-) must win over the OCR model and
+    // re-anchor it, so the next OCR cycle climbs from the value the user set. We
+    // ignore the detector's own value being echoed back via syncDetectorSettings.
+    if (
+      Number.isFinite(settings.villagerCount)
+      && settings.villagerCount !== this.villagerModel.value
+      && settings.villagerCount !== this.lastEmittedVillagerCount
+    ) {
+      this.anchorVillagerModel(settings.villagerCount);
+    }
+  }
+
+  anchorVillagerModel(value, now = Date.now()) {
+    const safe = clampNumber(value, START_VILLAGERS_DEFAULT, 1, MAX_VILLAGER_COUNT);
+    this.villagerModel = { value: safe, anchoredAt: now, lastAcceptedAt: now };
+    return safe;
+  }
+
+  // Trust a stable, confident OCR read directly (up or down) within sane bounds.
+  // The stable-read requirement (N consecutive identical reads) plus the small
+  // calibration box are what guard against noise like reading "121" for "12".
+  trustVillagerRead(ocrValue, isStable, confidence, minConfidence) {
+    const model = this.villagerModel;
+
+    if (!isStable || !Number.isFinite(ocrValue) || confidence < minConfidence) {
+      return model.value;
+    }
+
+    if (ocrValue < 1 || ocrValue > MAX_VILLAGER_COUNT) {
+      return model.value;
+    }
+
+    model.value = ocrValue;
+    model.lastAcceptedAt = Date.now();
+    return model.value;
+  }
+
+  // Accept per-resource villager reads that are confident and in range; keep the
+  // last known value for skipped (unchanged) regions or rejected reads.
+  applyResourceVillagers(reads, minConfidence) {
+    const result = {};
+
+    for (const key of RESOURCE_KEYS) {
+      const read = reads?.[key];
+      const previous = this.lastResourceVillagers[key];
+
+      if (!read || read.skipped) {
+        result[key] = previous;
+        continue;
+      }
+
+      const value = read.count;
+      const accept = Number.isFinite(value)
+        && value >= 0
+        && value <= MAX_RESOURCE_VILLAGERS
+        && read.confidence >= minConfidence;
+
+      result[key] = accept ? value : previous;
+    }
+
+    this.lastResourceVillagers = result;
+    return result;
   }
 
   async tick() {
@@ -139,6 +235,7 @@ class Detector extends EventEmitter {
 
     nextState.captureProvider = this.captureProvider.activeProvider;
     this.state = nextState;
+    this.lastEmittedVillagerCount = Number.isFinite(nextState.villagerCount) ? nextState.villagerCount : this.lastEmittedVillagerCount;
     this.emit('state', this.state);
   }
 
@@ -181,10 +278,14 @@ class Detector extends EventEmitter {
     this.lastCivOcrAt = 0;
     this.lastTopBarAt = 0;
     this.civLocked = false;
+    this.anchorVillagerModel(getStartVillagers(nextState.civ));
     this.stableReads = {
       villager: { value: null, count: 0 },
       civ: { value: null, count: 0 }
     };
+    this.lastResourceHashes = { food: null, wood: null, gold: null, stone: null };
+    this.lastResourceVillagers = { food: null, wood: null, gold: null, stone: null };
+    nextState.resourceVillagers = { food: null, wood: null, gold: null, stone: null };
   }
 
   async runOcr(nextState) {
@@ -201,6 +302,7 @@ class Detector extends EventEmitter {
       const read = await this.readCurrentFrame({
         forceCiv: false,
         forceVillager: !nextState.inMatch,
+        readResources: nextState.inMatch,
         includeImages: false
       });
       nextState.captureStats = updateCaptureStats(nextState.captureStats, read);
@@ -226,7 +328,9 @@ class Detector extends EventEmitter {
         this.lastTopBarAt = Date.now();
       }
 
-      if (!nextState.inMatch && villagerStable && villagerResult.confidence >= nextState.ocr.minConfidence) {
+      const isVillagerStable = villagerStable !== null && villagerStable !== undefined;
+
+      if (!nextState.inMatch && isVillagerStable && villagerResult.confidence >= nextState.ocr.minConfidence) {
         nextState.inMatch = true;
         nextState.sessionStatus = 'Match erkannt.';
         this.lastTopBarAt = Date.now();
@@ -249,8 +353,16 @@ class Detector extends EventEmitter {
         villagerHash: read.villagerHash
       };
 
-      if (villagerStable && villagerResult.confidence >= nextState.ocr.minConfidence && villagerStable > 0 && villagerStable < 250) {
-        nextState.villagerCount = villagerStable;
+      if (nextState.inMatch) {
+        nextState.villagerCount = villagerResult.skipped
+          ? this.villagerModel.value
+          : this.trustVillagerRead(
+            villagerCount,
+            isVillagerStable,
+            villagerResult.confidence,
+            nextState.ocr.minConfidence
+          );
+        nextState.resourceVillagers = this.applyResourceVillagers(read.resourceVillagers, nextState.ocr.minConfidence);
       }
 
       if (!civResult.skipped && civStable && civResult.confidence >= nextState.ocr.minConfidence) {
@@ -269,33 +381,63 @@ class Detector extends EventEmitter {
   }
 
   async testOcr() {
-    if (!this.desktopCapturer) {
+    if (!this.captureProvider.isAvailable()) {
       return {
         status: 'unavailable',
-        error: 'OCR-Abhaengigkeiten sind nicht verfuegbar.'
+        error: 'Native Bildschirmaufnahme ist nicht verfuegbar.'
       };
     }
 
     try {
-      const read = await this.readCurrentFrame({ forceCiv: true, forceVillager: true, includeImages: true });
-      if (read.error) {
-        return read;
+      const display = this.getSelectedDisplay();
+      const frame = await this.captureProvider.captureFrame(display);
+      const imageSize = { width: frame.width, height: frame.height };
+      const topBarRegion = regionPercentToPixels(this.state.ocr.topBarRegion, imageSize);
+      const villagerRegion = regionPercentToPixels(this.state.ocr.villagerRegion, imageSize);
+      const civRegion = regionPercentToPixels(this.state.ocr.civRegion, imageSize);
+
+      const variants = await this.diagnoseVillager(frame, villagerRegion);
+      const best = variants[0] || { text: '', digits: null, confidence: 0, image: '' };
+
+      const civResult = await this.recognize(
+        frame.cropDataUrl(civRegion, this.state.ocr.imageScale),
+        CIV_WHITELIST
+      );
+      const detectedCiv = matchKnownCiv(civResult.text, this.civs);
+      const villagerCount = parseLeadingCount(best.text);
+
+      const resources = {};
+      for (const key of RESOURCE_KEYS) {
+        const region = regionPercentToPixels(this.state.ocr[`${key}VilRegion`], imageSize);
+        const processed = frame.cropDataUrl(region, this.state.ocr.imageScale, { binarize: true });
+        const ocr = await this.recognize(processed, VILLAGER_WHITELIST);
+        const count = parseLeadingCount(ocr.text);
+        resources[key] = {
+          raw: frame.cropDataUrl(region, 1),
+          processed,
+          text: (ocr.text || '').trim(),
+          count: Number.isFinite(count) ? count : null,
+          confidence: Math.round(ocr.confidence)
+        };
       }
 
       return {
-        status: Number.isFinite(read.villagerCount) || read.detectedCiv ? 'read' : 'uncertain',
-        displayId: read.displayId,
-        imageSize: read.imageSize,
-        villagerText: read.villagerResult.text.trim(),
-        civText: read.civResult.text.trim(),
-        villagerCount: Number.isFinite(read.villagerCount) ? read.villagerCount : null,
-        civ: read.detectedCiv,
-        confidence: read.averageConfidence,
-        villagerConfidence: Math.round(read.villagerResult.confidence),
-        civConfidence: Math.round(read.civResult.confidence),
-        topBarRegion: read.topBarImage,
-        villagerRegion: read.villagerImage,
-        civRegion: read.civImage
+        status: Number.isFinite(villagerCount) || detectedCiv ? 'read' : 'uncertain',
+        displayId: display.id,
+        imageSize,
+        villagerText: (best.text || '').trim(),
+        civText: civResult.text.trim(),
+        villagerCount: Number.isFinite(villagerCount) ? villagerCount : null,
+        civ: detectedCiv,
+        confidence: Math.round((best.confidence + civResult.confidence) / 2),
+        villagerConfidence: Math.round(best.confidence),
+        civConfidence: Math.round(civResult.confidence),
+        topBarRegion: frame.cropDataUrl(topBarRegion, 1),
+        villagerRegion: frame.cropDataUrl(villagerRegion, 1),
+        civRegion: frame.cropDataUrl(civRegion, 1),
+        villagerProcessed: best.image,
+        villagerVariants: variants,
+        resources
       };
     } catch (error) {
       return {
@@ -303,6 +445,40 @@ class Detector extends EventEmitter {
         error: error.message
       };
     }
+  }
+
+  async diagnoseVillager(frame, villagerRegion) {
+    const scale = this.state.ocr.imageScale;
+    const variants = [];
+
+    for (const invert of VILLAGER_DIAG_INVERTS) {
+      for (const threshold of VILLAGER_DIAG_THRESHOLDS) {
+        const image = frame.cropDataUrl(villagerRegion, scale, { binarize: true, threshold, invert });
+        const result = await this.recognize(image, VILLAGER_WHITELIST);
+        const count = parseLeadingCount(result.text);
+        variants.push({
+          label: `thr ${threshold} / ${invert ? 'invertiert' : 'direkt'}`,
+          threshold,
+          invert,
+          text: (result.text || '').trim(),
+          digits: Number.isFinite(count) ? count : null,
+          confidence: Math.round(result.confidence),
+          image
+        });
+      }
+    }
+
+    // Best first: prefer variants that produced a usable number, then confidence.
+    variants.sort((a, b) => {
+      const aHas = a.digits !== null ? 1 : 0;
+      const bHas = b.digits !== null ? 1 : 0;
+      if (aHas !== bHas) {
+        return bHas - aHas;
+      }
+      return b.confidence - a.confidence;
+    });
+
+    return variants;
   }
 
   getSelectedDisplay() {
@@ -338,7 +514,10 @@ class Detector extends EventEmitter {
     const shouldReadVillager = options.forceVillager || villagerChanged;
     const shouldReadCiv = options.forceCiv || this.shouldRunCivOcr();
     const villagerResult = shouldReadVillager
-      ? await this.recognize(frame.cropDataUrl(villagerRegion, this.state.ocr.imageScale), '0123456789')
+      ? await this.recognize(
+        frame.cropDataUrl(villagerRegion, this.state.ocr.imageScale, { binarize: true }),
+        VILLAGER_WHITELIST
+      )
       : { text: '', confidence: 0, skipped: true };
 
     if (shouldReadVillager) {
@@ -346,13 +525,16 @@ class Detector extends EventEmitter {
     }
 
     const civResult = shouldReadCiv
-      ? await this.recognize(frame.cropDataUrl(civRegion, this.state.ocr.imageScale), 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ')
+      ? await this.recognize(frame.cropDataUrl(civRegion, this.state.ocr.imageScale), CIV_WHITELIST)
       : { text: '', confidence: 0, skipped: true };
-    const villagerCount = Number.parseInt(villagerResult.text.replace(/\D/g, ''), 10);
+    const villagerCount = parseLeadingCount(villagerResult.text);
     const detectedCiv = civResult.skipped ? null : matchKnownCiv(civResult.text, this.civs);
     const averageConfidence = civResult.skipped
       ? Math.round(villagerResult.confidence)
       : Math.round((villagerResult.confidence + civResult.confidence) / 2);
+    const resourceVillagers = options.readResources
+      ? await this.readResourceVillagers(frame, imageSize, options.forceResources)
+      : null;
 
     return {
       displayId: display.id,
@@ -368,8 +550,39 @@ class Detector extends EventEmitter {
       detectedCiv,
       averageConfidence,
       villagerHash,
+      resourceVillagers,
       topBarDetected: Number.isFinite(villagerCount) && villagerCount > 0 && villagerCount < 250
     };
+  }
+
+  async readResourceVillagers(frame, imageSize, force = false) {
+    const result = {};
+
+    for (const key of RESOURCE_KEYS) {
+      const region = regionPercentToPixels(this.state.ocr[`${key}VilRegion`], imageSize);
+      const hash = hashBuffer(frame.cropRaw(region));
+      const changed = hash !== this.lastResourceHashes[key];
+
+      if (!force && !changed) {
+        result[key] = { count: null, confidence: 0, skipped: true };
+        continue;
+      }
+
+      this.lastResourceHashes[key] = hash;
+      const ocr = await this.recognize(
+        frame.cropDataUrl(region, this.state.ocr.imageScale, { binarize: true }),
+        VILLAGER_WHITELIST
+      );
+      const count = parseLeadingCount(ocr.text);
+      result[key] = {
+        count: Number.isFinite(count) ? count : null,
+        confidence: Math.round(ocr.confidence),
+        text: (ocr.text || '').trim(),
+        skipped: false
+      };
+    }
+
+    return result;
   }
 
   shouldRunCivOcr() {
@@ -640,6 +853,20 @@ function clampNumber(value, fallback, min, max) {
   return Math.min(max, Math.max(min, number));
 }
 
+function getStartVillagers(civ) {
+  const value = CIV_START_VILLAGERS[civ];
+  return Number.isFinite(value) ? value : START_VILLAGERS_DEFAULT;
+}
+
+// Population is shown as "current/cap" (e.g. "9/15"); keep the integer before
+// the slash. Falls back to the first digit group anywhere in the text.
+function parseLeadingCount(text) {
+  const cleaned = String(text || '');
+  const beforeSlash = cleaned.split('/')[0];
+  const match = beforeSlash.match(/\d+/) || cleaned.match(/\d+/);
+  return match ? Number.parseInt(match[0], 10) : NaN;
+}
+
 function matchKnownCiv(text, civs) {
   const normalizedText = normalize(text);
   if (!normalizedText) {
@@ -714,5 +941,6 @@ function levenshtein(left, right) {
 
 module.exports = {
   Detector,
-  isAoeRunning
+  isAoeRunning,
+  getStartVillagers
 };

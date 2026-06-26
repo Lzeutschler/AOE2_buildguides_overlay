@@ -164,6 +164,10 @@
                 <label>Y %<input id="topBarRegionY" type="number" min="0" max="100" step="0.1"></label>
                 <label>B %<input id="topBarRegionWidth" type="number" min="0.1" max="100" step="0.1"></label>
                 <label>H %<input id="topBarRegionHeight" type="number" min="0.1" max="100" step="0.1"></label>
+                <label>X px<input id="topBarRegionXpx" type="number" min="0" step="1"></label>
+                <label>Y px<input id="topBarRegionYpx" type="number" min="0" step="1"></label>
+                <label>B px<input id="topBarRegionWidthpx" type="number" min="1" step="1"></label>
+                <label>H px<input id="topBarRegionHeightpx" type="number" min="1" step="1"></label>
               </div>
             </div>
 
@@ -174,6 +178,10 @@
                 <label>Y %<input id="villagerRegionY" type="number" min="0" max="100" step="0.1"></label>
                 <label>B %<input id="villagerRegionWidth" type="number" min="0.1" max="100" step="0.1"></label>
                 <label>H %<input id="villagerRegionHeight" type="number" min="0.1" max="100" step="0.1"></label>
+                <label>X px<input id="villagerRegionXpx" type="number" min="0" step="1"></label>
+                <label>Y px<input id="villagerRegionYpx" type="number" min="0" step="1"></label>
+                <label>B px<input id="villagerRegionWidthpx" type="number" min="1" step="1"></label>
+                <label>H px<input id="villagerRegionHeightpx" type="number" min="1" step="1"></label>
               </div>
             </div>
 
@@ -184,52 +192,181 @@
                 <label>Y %<input id="civRegionY" type="number" min="0" max="100" step="0.1"></label>
                 <label>B %<input id="civRegionWidth" type="number" min="0.1" max="100" step="0.1"></label>
                 <label>H %<input id="civRegionHeight" type="number" min="0.1" max="100" step="0.1"></label>
+                <label>X px<input id="civRegionXpx" type="number" min="0" step="1"></label>
+                <label>Y px<input id="civRegionYpx" type="number" min="0" step="1"></label>
+                <label>B px<input id="civRegionWidthpx" type="number" min="1" step="1"></label>
+                <label>H px<input id="civRegionHeightpx" type="number" min="1" step="1"></label>
               </div>
             </div>
 
-            <div class="preview-grid wide">
-              <figure>
-                <img id="topBarPreview" alt="OCR-Vorschau der oberen Leiste">
-                <figcaption>Obere Leiste</figcaption>
-              </figure>
-              <figure>
-                <img id="villagerPreview" alt="OCR-Vorschau fuer Dorfbewohner">
-                <figcaption>Dorfbewohner-Ausschnitt</figcaption>
-              </figure>
-              <figure>
-                <img id="civPreview" alt="OCR-Vorschau fuer Zivilisation">
-                <figcaption>Civ-/Menue-Ausschnitt</figcaption>
-              </figure>
+            <div class="region" data-region="foodVilRegion">
+              <strong>Dorfb. auf Nahrung</strong>
+              <div class="region-grid">
+                <label>X %<input id="foodVilRegionX" type="number" min="0" max="100" step="0.1"></label>
+                <label>Y %<input id="foodVilRegionY" type="number" min="0" max="100" step="0.1"></label>
+                <label>B %<input id="foodVilRegionWidth" type="number" min="0.1" max="100" step="0.1"></label>
+                <label>H %<input id="foodVilRegionHeight" type="number" min="0.1" max="100" step="0.1"></label>
+                <label>X px<input id="foodVilRegionXpx" type="number" min="0" step="1"></label>
+                <label>Y px<input id="foodVilRegionYpx" type="number" min="0" step="1"></label>
+                <label>B px<input id="foodVilRegionWidthpx" type="number" min="1" step="1"></label>
+                <label>H px<input id="foodVilRegionHeightpx" type="number" min="1" step="1"></label>
+              </div>
             </div>
 
-            <div class="calibration-tools" role="group" aria-label="OCR-Bereichswerkzeug">
-              <button id="selectTopBarRegion" class="tool-button active" type="button">Obere Leiste</button>
-              <button id="selectVillagerRegion" class="tool-button" type="button">Dorfbewohner</button>
-              <button id="selectCivRegion" class="tool-button" type="button">Civ</button>
+            <div class="region" data-region="woodVilRegion">
+              <strong>Dorfb. auf Holz</strong>
+              <div class="region-grid">
+                <label>X %<input id="woodVilRegionX" type="number" min="0" max="100" step="0.1"></label>
+                <label>Y %<input id="woodVilRegionY" type="number" min="0" max="100" step="0.1"></label>
+                <label>B %<input id="woodVilRegionWidth" type="number" min="0.1" max="100" step="0.1"></label>
+                <label>H %<input id="woodVilRegionHeight" type="number" min="0.1" max="100" step="0.1"></label>
+                <label>X px<input id="woodVilRegionXpx" type="number" min="0" step="1"></label>
+                <label>Y px<input id="woodVilRegionYpx" type="number" min="0" step="1"></label>
+                <label>B px<input id="woodVilRegionWidthpx" type="number" min="1" step="1"></label>
+                <label>H px<input id="woodVilRegionHeightpx" type="number" min="1" step="1"></label>
+              </div>
             </div>
 
-            <div class="screen-calibrator" id="screenCalibrator">
+            <div class="region" data-region="goldVilRegion">
+              <strong>Dorfb. auf Gold</strong>
+              <div class="region-grid">
+                <label>X %<input id="goldVilRegionX" type="number" min="0" max="100" step="0.1"></label>
+                <label>Y %<input id="goldVilRegionY" type="number" min="0" max="100" step="0.1"></label>
+                <label>B %<input id="goldVilRegionWidth" type="number" min="0.1" max="100" step="0.1"></label>
+                <label>H %<input id="goldVilRegionHeight" type="number" min="0.1" max="100" step="0.1"></label>
+                <label>X px<input id="goldVilRegionXpx" type="number" min="0" step="1"></label>
+                <label>Y px<input id="goldVilRegionYpx" type="number" min="0" step="1"></label>
+                <label>B px<input id="goldVilRegionWidthpx" type="number" min="1" step="1"></label>
+                <label>H px<input id="goldVilRegionHeightpx" type="number" min="1" step="1"></label>
+              </div>
+            </div>
+
+            <div class="region" data-region="stoneVilRegion">
+              <strong>Dorfb. auf Stein</strong>
+              <div class="region-grid">
+                <label>X %<input id="stoneVilRegionX" type="number" min="0" max="100" step="0.1"></label>
+                <label>Y %<input id="stoneVilRegionY" type="number" min="0" max="100" step="0.1"></label>
+                <label>B %<input id="stoneVilRegionWidth" type="number" min="0.1" max="100" step="0.1"></label>
+                <label>H %<input id="stoneVilRegionHeight" type="number" min="0.1" max="100" step="0.1"></label>
+                <label>X px<input id="stoneVilRegionXpx" type="number" min="0" step="1"></label>
+                <label>Y px<input id="stoneVilRegionYpx" type="number" min="0" step="1"></label>
+                <label>B px<input id="stoneVilRegionWidthpx" type="number" min="1" step="1"></label>
+                <label>H px<input id="stoneVilRegionHeightpx" type="number" min="1" step="1"></label>
+              </div>
+            </div>
+
+          </section>
+        </section>
+
+        <section class="panel calibration-panel">
+          <div class="settings-header">
+            <div>
+              <h2>Kalibrierung &amp; Vorschau</h2>
+              <p>Aktiven Bereich oben waehlen, dann direkt auf dem Screenshot ziehen. Zoom per Regler oder Strg+Mausrad, verschieben mit mittlerer Maustaste oder Mausrad. Aktiven Bereich mit Pfeiltasten pixelgenau schieben (Shift = 10px).</p>
+            </div>
+            <button id="refreshPreview2" class="secondary-button inline" type="button">Vorschau aktualisieren</button>
+          </div>
+
+          <div class="calibration-tools" role="group" aria-label="OCR-Bereichswerkzeug">
+            <button id="selectTopBarRegion" class="tool-button active" type="button">Obere Leiste</button>
+            <button id="selectVillagerRegion" class="tool-button" type="button">Dorfbewohner</button>
+            <button id="selectCivRegion" class="tool-button" type="button">Civ</button>
+            <button id="selectFoodVilRegion" class="tool-button" type="button">Nahrung</button>
+            <button id="selectWoodVilRegion" class="tool-button" type="button">Holz</button>
+            <button id="selectGoldVilRegion" class="tool-button" type="button">Gold</button>
+            <button id="selectStoneVilRegion" class="tool-button" type="button">Stein</button>
+          </div>
+
+          <div class="calib-zoom">
+            <label for="calibZoom">Zoom</label>
+            <input id="calibZoom" type="range" min="1" max="6" step="0.1" value="1">
+            <span id="calibZoomValue">1.0x</span>
+            <button id="calibZoomReset" class="secondary-button inline" type="button">Ansicht zuruecksetzen</button>
+          </div>
+
+          <div class="screen-calibrator" id="screenCalibrator" tabindex="0">
+            <div class="calibrator-viewport" id="calibratorViewport">
               <img id="screenPreview" alt="Screenshot des ausgewaehlten Bildschirms">
               <div id="topBarBox" class="region-box topbar-box">
                 <span>Obere Leiste</span>
-                <i></i>
+                <i class="handle handle-se"></i>
               </div>
               <div id="villagerBox" class="region-box villager-box">
                 <span>Dorfb.</span>
-                <i></i>
+                <i class="handle handle-se"></i>
               </div>
               <div id="civBox" class="region-box civ-box">
                 <span>Civ</span>
-                <i></i>
+                <i class="handle handle-se"></i>
+              </div>
+              <div id="foodVilBox" class="region-box food-box">
+                <span>Nahrung</span>
+                <i class="handle handle-se"></i>
+              </div>
+              <div id="woodVilBox" class="region-box wood-box">
+                <span>Holz</span>
+                <i class="handle handle-se"></i>
+              </div>
+              <div id="goldVilBox" class="region-box gold-box">
+                <span>Gold</span>
+                <i class="handle handle-se"></i>
+              </div>
+              <div id="stoneVilBox" class="region-box stone-box">
+                <span>Stein</span>
+                <i class="handle handle-se"></i>
               </div>
             </div>
+            <div id="calibLoupe" class="calib-loupe" aria-hidden="true"></div>
+          </div>
 
-            <span id="previewStatus" class="preview-status"></span>
-            <div class="settings-actions">
-              <button id="testOcr" class="secondary-button" type="button">OCR testen</button>
-              <button id="resetCalibration" class="secondary-button" type="button">Bereiche zuruecksetzen</button>
-            </div>
-          </section>
+          <span id="previewStatus" class="preview-status"></span>
+
+          <div class="preview-grid wide">
+            <figure>
+              <img id="topBarPreview" alt="OCR-Vorschau der oberen Leiste">
+              <figcaption>Obere Leiste</figcaption>
+            </figure>
+            <figure>
+              <img id="villagerPreview" alt="OCR-Vorschau fuer Dorfbewohner">
+              <figcaption>Dorfbewohner-Ausschnitt</figcaption>
+            </figure>
+            <figure>
+              <img id="villagerProcessedPreview" alt="Was die OCR sieht">
+              <figcaption>Was die OCR sieht</figcaption>
+            </figure>
+            <figure>
+              <img id="civPreview" alt="OCR-Vorschau fuer Zivilisation">
+              <figcaption>Civ-/Menue-Ausschnitt</figcaption>
+            </figure>
+          </div>
+
+          <div id="ocrVariants" class="ocr-variants"></div>
+
+          <h3 class="resource-preview-title">Dorfbewohner pro Rohstoff</h3>
+          <div class="preview-grid resources">
+            <figure>
+              <img id="foodVilProcessedPreview" alt="Was die OCR auf Nahrung sieht">
+              <figcaption>Nahrung <b id="foodVilValue">-</b></figcaption>
+            </figure>
+            <figure>
+              <img id="woodVilProcessedPreview" alt="Was die OCR auf Holz sieht">
+              <figcaption>Holz <b id="woodVilValue">-</b></figcaption>
+            </figure>
+            <figure>
+              <img id="goldVilProcessedPreview" alt="Was die OCR auf Gold sieht">
+              <figcaption>Gold <b id="goldVilValue">-</b></figcaption>
+            </figure>
+            <figure>
+              <img id="stoneVilProcessedPreview" alt="Was die OCR auf Stein sieht">
+              <figcaption>Stein <b id="stoneVilValue">-</b></figcaption>
+            </figure>
+          </div>
+
+          <div class="settings-actions">
+            <button id="testOcr" class="secondary-button" type="button">OCR testen</button>
+            <label class="live-toggle"><input type="checkbox" id="ocrLiveTest"> Dauertest (alle 1,5s)</label>
+            <button id="resetCalibration" class="secondary-button" type="button">Bereiche zuruecksetzen</button>
+          </div>
         </section>
       </section>
     </main>
