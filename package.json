@@ -1,18 +1,20 @@
 {
-  "name": "aoe2-buildguides-overlay",
+  "name": "kdrs-overlay",
   "version": "0.1.0",
-  "description": "Windows companion overlay for Age of Empires II build orders.",
-  "author": "AOE2 Build Overlay",
+  "description": "Knappe der Rauen Schlacht - Windows companion overlay for Age of Empires II build orders.",
+  "author": "KDRS",
   "main": "src/main/main.js",
   "private": true,
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
-    "check": "node --check src/main/main.js && node --check src/main/detector.js && node --check src/main/build-engine.js && node --check src/main/settings-store.js && node --check src/renderer/dashboard.js && node --check src/renderer/overlay.js && node -e \"require('./src/data/build-orders.json'); require('./src/data/hera-build-orders.json'); require('./src/data/civilizations.json'); require('./examples/custom-build-orders.example.json')\"",
+    "check": "node --check src/main/main.js && node --check src/main/detector.js && node --check src/main/capture-provider.js && node --check src/main/ocr-worker-thread.js && node --check src/main/build-engine.js && node --check src/main/settings-store.js && node --check src/renderer/dashboard.js && node --check src/renderer/overlay.js && node --check scripts/benchmark-capture.js && node -e \"require('./src/data/build-orders.json'); require('./src/data/hera-build-orders.json'); require('./src/data/civilizations.json'); require('./examples/custom-build-orders.example.json')\"",
+    "benchmark:capture": "node scripts/benchmark-capture.js",
     "pack": "electron-builder --dir",
     "dist": "electron-builder --win"
   },
   "dependencies": {
+    "node-screenshots": "^0.2.8",
     "tesseract.js": "^5.1.1"
   },
   "devDependencies": {
@@ -20,8 +22,8 @@
     "electron-builder": "^26.15.3"
   },
   "build": {
-    "appId": "com.aoe2buildguides.overlay",
-    "productName": "AOE2 Build Overlay",
+    "appId": "com.kdrs.overlay",
+    "productName": "KDRS",
     "copyright": "Copyright 2026",
     "asar": true,
     "directories": {

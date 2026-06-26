@@ -1,6 +1,15 @@
 const $ = (selector) => document.querySelector(selector);
+const listen = (element, eventName, handler) => {
+  if (element) {
+    element.addEventListener(eventName, handler);
+  }
+};
 
 const elements = {
+  mainTab: $('#mainTab'),
+  settingsTab: $('#settingsTab'),
+  mainView: $('#mainView'),
+  settingsView: $('#settingsView'),
   statusText: $('#statusText'),
   gameStatus: $('#gameStatus'),
   civSelect: $('#civSelect'),
@@ -32,23 +41,36 @@ const elements = {
   testOcr: $('#testOcr'),
   resetCalibration: $('#resetCalibration'),
   previewStatus: $('#previewStatus'),
+  topBarPreview: $('#topBarPreview'),
   villagerPreview: $('#villagerPreview'),
   civPreview: $('#civPreview'),
   ocrSettings: {
-    intervalMs: $('#ocrIntervalMs'),
+    captureProvider: $('#ocrCaptureProvider'),
+    captureIntervalMs: $('#ocrCaptureIntervalMs'),
+    startupProbeIntervalMs: $('#ocrStartupProbeIntervalMs'),
+    civIntervalMs: $('#ocrCivIntervalMs'),
     minConfidence: $('#ocrMinConfidence'),
     stableReadCount: $('#ocrStableReadCount'),
     imageScale: $('#ocrImageScale')
   },
+  ocrCivReadOnce: $('#ocrCivReadOnce'),
   screenCalibrator: $('#screenCalibrator'),
   screenPreview: $('#screenPreview'),
+  selectTopBarRegion: $('#selectTopBarRegion'),
   selectVillagerRegion: $('#selectVillagerRegion'),
   selectCivRegion: $('#selectCivRegion'),
   regionBoxes: {
+    topBarRegion: $('#topBarBox'),
     villagerRegion: $('#villagerBox'),
     civRegion: $('#civBox')
   },
   regions: {
+    topBarRegion: {
+      x: $('#topBarRegionX'),
+      y: $('#topBarRegionY'),
+      width: $('#topBarRegionWidth'),
+      height: $('#topBarRegionHeight')
+    },
     villagerRegion: {
       x: $('#villagerRegionX'),
       y: $('#villagerRegionY'),
@@ -65,6 +87,7 @@ const elements = {
   buildName: $('#buildName'),
   buildSummary: $('#buildSummary'),
   progressPercent: $('#progressPercent'),
+  stepIcon: $('#stepIcon'),
   stepVillagers: $('#stepVillagers'),
   stepTitle: $('#stepTitle'),
   stepInstruction: $('#stepInstruction'),
@@ -72,140 +95,164 @@ const elements = {
 };
 
 const defaultRegions = {
-  villagerRegion: { x: 0.39, y: 0.014, width: 0.06, height: 0.035 },
-  civRegion: { x: 0.78, y: 0.04, width: 0.16, height: 0.06 }
+  topBarRegion: { x: 0, y: 0, width: 1, height: 0.075 },
+  villagerRegion: { x: 0.265, y: 0.004, width: 0.04, height: 0.06 },
+  civRegion: { x: 0.83, y: 0.006, width: 0.15, height: 0.065 }
 };
 
 const defaultOcrSettings = {
-  intervalMs: 1800,
-  minConfidence: 45,
+  captureProvider: 'auto',
+  captureIntervalMs: 2500,
+  startupProbeIntervalMs: 1000,
+  civIntervalMs: 60000,
+  civReadOnce: true,
+  minConfidence: 55,
   stableReadCount: 2,
-  imageScale: 3
+  imageScale: 1
 };
 
 let currentState;
-let activeRegion = 'villagerRegion';
+let activeRegion = 'topBarRegion';
 let dragState = null;
 
 window.aoeOverlay.getState().then(render);
 window.aoeOverlay.onState(render);
 
-elements.civSelect.addEventListener('change', () => {
+listen(elements.mainTab, 'click', () => {
+  setView('main');
+});
+
+listen(elements.settingsTab, 'click', () => {
+  setView('settings');
+});
+
+listen(elements.civSelect, 'change', () => {
   window.aoeOverlay.updateState({ civ: elements.civSelect.value });
 });
 
-elements.buildSelect.addEventListener('change', () => {
+listen(elements.buildSelect, 'change', () => {
   window.aoeOverlay.updateState({ selectedBuildId: elements.buildSelect.value });
 });
 
-elements.importBuilds.addEventListener('click', async () => {
-  elements.buildImportStatus.textContent = 'Importing...';
+listen(elements.importBuilds, 'click', async () => {
+  elements.buildImportStatus.textContent = 'Importiere...';
   try {
     const result = await window.aoeOverlay.importBuilds();
     if (!result || result.canceled) {
-      elements.buildImportStatus.textContent = 'Import canceled.';
+      elements.buildImportStatus.textContent = 'Import abgebrochen.';
       return;
     }
 
     if (result.error) {
-      elements.buildImportStatus.textContent = `Import failed: ${result.error}`;
+      elements.buildImportStatus.textContent = `Import fehlgeschlagen: ${result.error}`;
       return;
     }
 
-    elements.buildImportStatus.textContent = `Imported ${result.importedBuilds} builds. ${result.totalCustomBuilds} custom builds loaded.`;
+    elements.buildImportStatus.textContent = `${result.importedBuilds} Builds importiert. ${result.totalCustomBuilds} eigene Builds geladen.`;
   } catch (error) {
     elements.buildImportStatus.textContent = error.message;
   }
 });
 
-elements.exportBuilds.addEventListener('click', async () => {
-  elements.buildImportStatus.textContent = 'Exporting...';
+listen(elements.exportBuilds, 'click', async () => {
+  elements.buildImportStatus.textContent = 'Exportiere...';
   try {
     const result = await window.aoeOverlay.exportBuilds();
     if (!result || result.canceled) {
-      elements.buildImportStatus.textContent = 'Export canceled.';
+      elements.buildImportStatus.textContent = 'Export abgebrochen.';
       return;
     }
 
-    elements.buildImportStatus.textContent = `Exported ${result.exportedBuilds} builds.`;
+    elements.buildImportStatus.textContent = `${result.exportedBuilds} Builds exportiert.`;
   } catch (error) {
     elements.buildImportStatus.textContent = error.message;
   }
 });
 
-elements.detectionMode.addEventListener('change', () => {
+listen(elements.detectionMode, 'change', () => {
   window.aoeOverlay.updateState({ detectionMode: elements.detectionMode.value });
 });
 
-elements.displaySelect.addEventListener('change', () => {
+listen(elements.displaySelect, 'change', () => {
   window.aoeOverlay.updateState({ selectedDisplayId: elements.displaySelect.value });
 });
 
-elements.villagerMinus.addEventListener('click', () => {
+listen(elements.villagerMinus, 'click', () => {
   window.aoeOverlay.adjustVillagers(-1);
 });
 
-elements.villagerPlus.addEventListener('click', () => {
+listen(elements.villagerPlus, 'click', () => {
   window.aoeOverlay.adjustVillagers(1);
 });
 
-elements.overlayEnabled.addEventListener('change', () => {
+listen(elements.overlayEnabled, 'change', () => {
   window.aoeOverlay.updateState({ overlayEnabled: elements.overlayEnabled.checked });
 });
 
-elements.overlayClickThrough.addEventListener('change', () => {
+listen(elements.overlayClickThrough, 'change', () => {
   window.aoeOverlay.updateState({ overlayClickThrough: elements.overlayClickThrough.checked });
 });
 
-elements.overlayOnlyWhenAoe.addEventListener('change', () => {
+listen(elements.overlayOnlyWhenAoe, 'change', () => {
   window.aoeOverlay.updateState({ overlayOnlyWhenAoe: elements.overlayOnlyWhenAoe.checked });
 });
 
-elements.autoShowDashboardOnAoe.addEventListener('change', () => {
+listen(elements.autoShowDashboardOnAoe, 'change', () => {
   window.aoeOverlay.updateState({ autoShowDashboardOnAoe: elements.autoShowDashboardOnAoe.checked });
 });
 
-elements.hotkeysEnabled.addEventListener('change', () => {
+listen(elements.hotkeysEnabled, 'change', () => {
   window.aoeOverlay.updateState({ hotkeysEnabled: elements.hotkeysEnabled.checked });
 });
 
-elements.launchAtLogin.addEventListener('change', () => {
+listen(elements.launchAtLogin, 'change', () => {
   window.aoeOverlay.updateState({ launchAtLogin: elements.launchAtLogin.checked });
 });
 
-elements.overlayNudgeUp.addEventListener('click', () => {
+listen(elements.overlayNudgeUp, 'click', () => {
   window.aoeOverlay.moveOverlay({ dx: 0, dy: -16 });
 });
 
-elements.overlayNudgeDown.addEventListener('click', () => {
+listen(elements.overlayNudgeDown, 'click', () => {
   window.aoeOverlay.moveOverlay({ dx: 0, dy: 16 });
 });
 
-elements.overlayNudgeLeft.addEventListener('click', () => {
+listen(elements.overlayNudgeLeft, 'click', () => {
   window.aoeOverlay.moveOverlay({ dx: -16, dy: 0 });
 });
 
-elements.overlayNudgeRight.addEventListener('click', () => {
+listen(elements.overlayNudgeRight, 'click', () => {
   window.aoeOverlay.moveOverlay({ dx: 16, dy: 0 });
 });
 
-elements.overlayResetPosition.addEventListener('click', () => {
+listen(elements.overlayResetPosition, 'click', () => {
   window.aoeOverlay.moveOverlay({ reset: true });
 });
 
 for (const [settingName, input] of Object.entries(elements.ocrSettings)) {
-  input.addEventListener('change', () => {
+  listen(input, 'change', () => {
+    const value = settingName === 'captureProvider'
+      ? input.value
+      : readNumber(input, defaultOcrSettings[settingName]);
     window.aoeOverlay.updateState({
       ocr: {
-        [settingName]: readNumber(input, defaultOcrSettings[settingName])
+        [settingName]: value
       }
     });
   });
 }
 
+listen(elements.ocrCivReadOnce, 'change', () => {
+  window.aoeOverlay.updateState({
+    ocr: {
+      civReadOnce: elements.ocrCivReadOnce.checked
+    }
+  });
+});
+
 for (const [regionName, inputs] of Object.entries(elements.regions)) {
   for (const input of Object.values(inputs)) {
-    input.addEventListener('change', () => {
+    listen(input, 'change', () => {
       window.aoeOverlay.updateState({
         ocr: {
           [regionName]: readRegion(regionName)
@@ -215,38 +262,43 @@ for (const [regionName, inputs] of Object.entries(elements.regions)) {
   }
 }
 
-elements.resetCalibration.addEventListener('click', () => {
+listen(elements.resetCalibration, 'click', () => {
   window.aoeOverlay.updateState({
     ocr: {
+      topBarRegion: defaultRegions.topBarRegion,
       villagerRegion: defaultRegions.villagerRegion,
       civRegion: defaultRegions.civRegion
     }
   });
 });
 
-elements.refreshPreview.addEventListener('click', async () => {
+listen(elements.refreshPreview, 'click', async () => {
   await refreshPreview();
 });
 
-elements.testOcr.addEventListener('click', async () => {
+listen(elements.testOcr, 'click', async () => {
   await testOcrNow();
 });
 
-elements.selectVillagerRegion.addEventListener('click', () => {
+listen(elements.selectTopBarRegion, 'click', () => {
+  setActiveRegion('topBarRegion');
+});
+
+listen(elements.selectVillagerRegion, 'click', () => {
   setActiveRegion('villagerRegion');
 });
 
-elements.selectCivRegion.addEventListener('click', () => {
+listen(elements.selectCivRegion, 'click', () => {
   setActiveRegion('civRegion');
 });
 
 for (const [regionName, box] of Object.entries(elements.regionBoxes)) {
-  box.addEventListener('pointerdown', (event) => {
+  listen(box, 'pointerdown', (event) => {
     startRegionDrag(event, regionName, event.target.tagName.toLowerCase() === 'i' ? 'resize' : 'move');
   });
 }
 
-elements.screenCalibrator.addEventListener('pointerdown', (event) => {
+listen(elements.screenCalibrator, 'pointerdown', (event) => {
   if (event.target !== elements.screenPreview) {
     return;
   }
@@ -271,11 +323,11 @@ function render(state) {
   })), state.selectedBuildId);
   renderSelect(elements.displaySelect, state.displays.map((display) => ({
     value: String(display.id),
-    label: `${display.primary ? 'Primary' : 'Display'} ${display.id}`
+    label: `${display.primary ? 'Hauptbildschirm' : 'Bildschirm'} ${display.id}`
   })), String(state.selectedDisplayId || state.displays[0]?.id || ''));
 
   elements.detectionMode.value = state.detectionMode;
-  elements.customBuildStatus.textContent = `${state.customBuildCount || 0} loaded`;
+  elements.customBuildStatus.textContent = `${state.customBuildCount || 0} geladen`;
   elements.villagerCount.textContent = state.villagerCount;
   elements.overlayEnabled.checked = state.overlayEnabled;
   elements.overlayClickThrough.checked = state.overlayClickThrough;
@@ -285,13 +337,15 @@ function render(state) {
   elements.launchAtLogin.checked = state.launchAtLogin;
   elements.overlayPositionText.textContent = formatOverlayPosition(state.overlayPosition);
 
-  elements.gameStatus.textContent = state.aoeRunning ? 'AOE2 online' : 'AOE2 offline';
+  elements.gameStatus.textContent = state.inMatch ? 'Match erkannt' : state.aoeRunning ? 'AOE2 offen' : 'AOE2 offline';
   elements.gameStatus.classList.toggle('online', state.aoeRunning);
-  elements.statusText.textContent = `${state.civ} / ${state.build.name} / ${state.detectionMode === 'ocr' ? 'OCR' : 'Manual'}`;
+  elements.statusText.textContent = `${state.civ} / ${state.build.name} / ${state.sessionStatus || 'Bildschirm-Erkennung'}`;
 
-  elements.ocrStatus.textContent = state.ocr?.status || 'idle';
-  elements.ocrText.textContent = formatOcrText(state.ocr);
+  elements.ocrStatus.textContent = translateOcrStatus(state.ocr?.status || 'idle');
+  elements.ocrText.textContent = formatOcrText(state);
   writeOcrSettings(state.ocr || defaultOcrSettings);
+  elements.ocrCivReadOnce.checked = Boolean(state.ocr?.civReadOnce ?? defaultOcrSettings.civReadOnce);
+  writeRegion('topBarRegion', state.ocr?.topBarRegion || defaultRegions.topBarRegion);
   writeRegion('villagerRegion', state.ocr?.villagerRegion || defaultRegions.villagerRegion);
   writeRegion('civRegion', state.ocr?.civRegion || defaultRegions.civRegion);
   renderRegionBoxes(state);
@@ -305,11 +359,37 @@ function render(state) {
 
   const step = state.progress.current || state.build.steps[0];
   const next = state.progress.next;
-  elements.stepVillagers.textContent = `${step.villagers} vils`;
+  const currentIcon = getStepIcon(step);
+  elements.stepIcon.src = currentIcon.src;
+  elements.stepIcon.alt = currentIcon.label;
+  elements.stepVillagers.textContent = `${step.villagers} Dorfb.`;
   elements.stepTitle.textContent = step.title;
   elements.stepInstruction.textContent = step.instruction;
 
   elements.timeline.replaceChildren(...state.build.steps.map((item) => renderStep(item, step, next, state.villagerCount)));
+}
+
+function setView(viewName) {
+  const settings = viewName === 'settings';
+  elements.mainTab.classList.toggle('active', !settings);
+  elements.settingsTab.classList.toggle('active', settings);
+  elements.mainView.classList.toggle('active', !settings);
+  elements.settingsView.classList.toggle('active', settings);
+}
+
+function translateOcrStatus(status) {
+  const labels = {
+    idle: 'wartet',
+    capturing: 'nimmt auf',
+    read: 'erkannt',
+    unchanged: 'unveraendert',
+    uncertain: 'unsicher',
+    error: 'Fehler',
+    unavailable: 'nicht verfuegbar',
+    'no-frame': 'kein Bild'
+  };
+
+  return labels[status] || status;
 }
 
 function formatOverlayPosition(position) {
@@ -344,7 +424,14 @@ function renderStep(item, current, next, villagerCount) {
 
   const villager = document.createElement('div');
   villager.className = 'vil';
-  villager.textContent = `${item.villagers} vils`;
+  const icon = getStepIcon(item);
+  const iconNode = document.createElement('img');
+  iconNode.src = icon.src;
+  iconNode.alt = icon.label;
+  iconNode.className = 'mini-icon';
+  const count = document.createElement('span');
+  count.textContent = `${item.villagers} Dorfb.`;
+  villager.append(iconNode, count);
 
   const body = document.createElement('div');
   const title = document.createElement('strong');
@@ -355,6 +442,30 @@ function renderStep(item, current, next, villagerCount) {
 
   li.append(villager, body);
   return li;
+}
+
+function getStepIcon(step) {
+  const text = `${step?.title || ''} ${step?.instruction || ''}`.toLowerCase();
+  const icons = {
+    food: './assets/aoe2/resource-food.png',
+    wood: './assets/aoe2/resource-wood.png',
+    gold: './assets/aoe2/resource-gold.png',
+    stone: './assets/aoe2/resource-stone.png'
+  };
+
+  if (/(gold|mining camp|mining|mine|relic)/.test(text)) {
+    return { src: icons.gold, label: 'Gold' };
+  }
+
+  if (/(stone|castle|donjon|krepost)/.test(text)) {
+    return { src: icons.stone, label: 'Stein' };
+  }
+
+  if (/(wood|lumber|barracks|stable|range|blacksmith|market|dock|house|wall|farm)/.test(text)) {
+    return { src: icons.wood, label: 'Holz' };
+  }
+
+  return { src: icons.food, label: 'Nahrung' };
 }
 
 function readRegion(regionName) {
@@ -395,17 +506,21 @@ function writeOcrSettings(ocr) {
   }
 }
 
-function formatOcrText(ocr) {
+function formatOcrText(state) {
+  const ocr = state?.ocr;
   if (!ocr) {
     return '';
   }
 
   const read = ocr.lastRead;
   const detail = read
-    ? `conf ${read.confidence ?? 0} / stable ${read.stableVillagerCount ?? '-'} / ${read.stableCiv ?? '-'}`
+    ? `Sicherheit ${read.confidence ?? 0} / stabil ${read.stableVillagerCount ?? '-'} / ${read.stableCiv ?? '-'}`
+    : '';
+  const stats = state.captureStats
+    ? `${state.captureStats.provider || state.captureProvider || '-'} ${state.captureStats.lastCaptureMs ?? '-'}ms / Schnitt ${state.captureStats.averageCaptureMs ?? '-'}ms`
     : '';
 
-  return [ocr.lastText, detail, ocr.lastError].filter(Boolean).join(' | ');
+  return [state.sessionStatus, stats, ocr.lastText, detail, ocr.lastError].filter(Boolean).join(' | ');
 }
 
 function toPercent(value) {
@@ -418,12 +533,12 @@ function toPercent(value) {
 }
 
 async function refreshPreview() {
-  elements.previewStatus.textContent = 'Capturing...';
+  elements.previewStatus.textContent = 'Nehme Screenshot auf...';
 
   try {
     const preview = await window.aoeOverlay.getOcrPreview();
     if (!preview) {
-      elements.previewStatus.textContent = 'Detector is not ready yet.';
+      elements.previewStatus.textContent = 'Erkennung ist noch nicht bereit.';
       return;
     }
 
@@ -432,10 +547,11 @@ async function refreshPreview() {
       return;
     }
 
+    elements.topBarPreview.src = preview.topBarRegion;
     elements.villagerPreview.src = preview.villagerRegion;
     elements.civPreview.src = preview.civRegion;
     elements.screenPreview.src = preview.fullFrame;
-    elements.previewStatus.textContent = `Display ${preview.displayId} / ${preview.imageSize.width}x${preview.imageSize.height}`;
+    elements.previewStatus.textContent = `Bildschirm ${preview.displayId} / ${preview.imageSize.width}x${preview.imageSize.height}`;
     renderRegionBoxes(currentState);
   } catch (error) {
     elements.previewStatus.textContent = error.message;
@@ -443,12 +559,12 @@ async function refreshPreview() {
 }
 
 async function testOcrNow() {
-  elements.previewStatus.textContent = 'Testing OCR...';
+  elements.previewStatus.textContent = 'Teste OCR...';
 
   try {
     const result = await window.aoeOverlay.testOcr();
     if (!result) {
-      elements.previewStatus.textContent = 'Detector is not ready yet.';
+      elements.previewStatus.textContent = 'Erkennung ist noch nicht bereit.';
       return;
     }
 
@@ -457,14 +573,15 @@ async function testOcrNow() {
       return;
     }
 
+    elements.topBarPreview.src = result.topBarRegion;
     elements.villagerPreview.src = result.villagerRegion;
     elements.civPreview.src = result.civRegion;
     elements.previewStatus.textContent = [
       `OCR ${result.status}`,
-      `vils ${result.villagerCount ?? '-'}`,
+      `Dorfb. ${result.villagerCount ?? '-'}`,
       `civ ${result.civ ?? '-'}`,
-      `conf ${result.confidence ?? 0}`,
-      `raw "${result.villagerText || '-'}" / "${result.civText || '-'}"`
+      `Sicherheit ${result.confidence ?? 0}`,
+      `Rohtext "${result.villagerText || '-'}" / "${result.civText || '-'}"`
     ].join(' / ');
   } catch (error) {
     elements.previewStatus.textContent = error.message;
@@ -473,8 +590,10 @@ async function testOcrNow() {
 
 function setActiveRegion(regionName) {
   activeRegion = regionName;
+  elements.selectTopBarRegion.classList.toggle('active', regionName === 'topBarRegion');
   elements.selectVillagerRegion.classList.toggle('active', regionName === 'villagerRegion');
   elements.selectCivRegion.classList.toggle('active', regionName === 'civRegion');
+  elements.regionBoxes.topBarRegion.classList.toggle('active', regionName === 'topBarRegion');
   elements.regionBoxes.villagerRegion.classList.toggle('active', regionName === 'villagerRegion');
   elements.regionBoxes.civRegion.classList.toggle('active', regionName === 'civRegion');
 }
@@ -618,14 +737,6 @@ function clamp(value, min, max) {
 }
 
 window.addEventListener('keydown', (event) => {
-  if (event.key === '+' || event.key === '=') {
-    window.aoeOverlay.adjustVillagers(1);
-  }
-
-  if (event.key === '-') {
-    window.aoeOverlay.adjustVillagers(-1);
-  }
-
   if (event.key.toLowerCase() === 'o' && currentState) {
     window.aoeOverlay.updateState({ overlayEnabled: !currentState.overlayEnabled });
   }

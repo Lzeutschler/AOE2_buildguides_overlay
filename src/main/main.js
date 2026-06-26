@@ -1,7 +1,6 @@
 const path = require('node:path');
 const fs = require('node:fs');
 const { app, BrowserWindow, Menu, Tray, nativeImage, globalShortcut, ipcMain, screen, desktopCapturer, dialog } = require('electron');
-const tesseract = require('tesseract.js');
 const baseBuildData = require('../data/build-orders.json');
 const heraBuildData = require('../data/hera-build-orders.json');
 const civData = require('../data/civilizations.json');
@@ -10,6 +9,8 @@ const { findBuild, getBuildProgress, getRecommendedBuilds } = require('./build-e
 const { loadSettings, saveSettings } = require('./settings-store');
 
 const defaultBuildData = combineBuildData(baseBuildData, heraBuildData);
+const OVERLAY_WIDTH = 430;
+const OVERLAY_HEIGHT = 318;
 
 let dashboardWindow;
 let overlayWindow;
@@ -22,10 +23,20 @@ let buildData = defaultBuildData;
 
 const appState = {
   aoeRunning: false,
+  inMatch: false,
+  sessionStatus: 'Warte auf AOE2.',
+  captureProvider: 'unavailable',
+  captureStats: {
+    provider: 'unavailable',
+    samples: 0,
+    lastCaptureMs: null,
+    averageCaptureMs: null,
+    maxCaptureMs: null
+  },
   civ: 'Generic',
   villagerCount: 6,
   selectedBuildId: 'generic-scouts',
-  detectionMode: 'manual',
+  detectionMode: 'ocr',
   overlayEnabled: true,
   overlayClickThrough: true,
   overlayOnlyWhenAoe: true,
@@ -39,12 +50,18 @@ const appState = {
     status: 'idle',
     lastText: '',
     lastError: '',
-    intervalMs: 1800,
-    minConfidence: 45,
+    intervalMs: 5000,
+    civIntervalMs: 60000,
+    captureProvider: 'auto',
+    captureIntervalMs: 2500,
+    startupProbeIntervalMs: 1000,
+    civReadOnce: true,
+    minConfidence: 55,
     stableReadCount: 2,
-    imageScale: 3,
-    villagerRegion: { x: 0.39, y: 0.014, width: 0.06, height: 0.035 },
-    civRegion: { x: 0.78, y: 0.04, width: 0.16, height: 0.06 }
+    imageScale: 1,
+    topBarRegion: { x: 0, y: 0, width: 1, height: 0.075 },
+    villagerRegion: { x: 0.265, y: 0.004, width: 0.04, height: 0.06 },
+    civRegion: { x: 0.83, y: 0.006, width: 0.15, height: 0.065 }
   }
 };
 
@@ -73,8 +90,8 @@ function createDashboardWindow() {
     height: Math.min(820, targetDisplay.workAreaSize.height),
     minWidth: 920,
     minHeight: 620,
-    title: 'AOE2 Build Overlay',
-    backgroundColor: '#f7f4ed',
+    title: 'Knappe der Rauen Schlacht',
+    backgroundColor: '#20140d',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -94,8 +111,8 @@ function createDashboardWindow() {
 }
 
 function createOverlayWindow() {
-  const width = 560;
-  const height = 118;
+  const width = OVERLAY_WIDTH;
+  const height = OVERLAY_HEIGHT;
   const position = normalizeOverlayPosition(appState.overlayPosition, width, height);
   appState.overlayPosition = position;
   overlayWindow = new BrowserWindow({
@@ -111,7 +128,7 @@ function createOverlayWindow() {
     skipTaskbar: true,
     alwaysOnTop: true,
     focusable: false,
-    title: 'AOE2 Next Step',
+    title: 'KDRS Naechste Schritte',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -166,16 +183,35 @@ function getCivs() {
 
 function updateState(partial, options = {}) {
   const { ocr, overlayPosition, ...rest } = partial;
+  const shouldSyncLaunchAtLogin = Object.prototype.hasOwnProperty.call(rest, 'launchAtLogin');
+  const shouldUpdateTray = [
+    'overlayEnabled',
+    'overlayOnlyWhenAoe',
+    'overlayClickThrough',
+    'hotkeysEnabled',
+    'launchAtLogin'
+  ].some((key) => Object.prototype.hasOwnProperty.call(rest, key)) || Boolean(overlayPosition);
+  if (Object.prototype.hasOwnProperty.call(rest, 'detectionMode') && rest.detectionMode !== 'ocr') {
+    rest.detectionMode = 'ocr';
+  }
   Object.assign(appState, rest);
 
   if (ocr) {
     appState.ocr = {
       ...appState.ocr,
       ...ocr,
-      intervalMs: clampNumber(ocr.intervalMs, appState.ocr.intervalMs, 500, 10000),
+      intervalMs: clampNumber(ocr.intervalMs, appState.ocr.intervalMs, 5000, 20000),
+      civIntervalMs: clampNumber(ocr.civIntervalMs, appState.ocr.civIntervalMs, 15000, 300000),
+      captureProvider: ['auto', 'node-screenshots'].includes(ocr.captureProvider)
+        ? ocr.captureProvider
+        : appState.ocr.captureProvider,
+      captureIntervalMs: clampNumber(ocr.captureIntervalMs, appState.ocr.captureIntervalMs, 1000, 10000),
+      startupProbeIntervalMs: clampNumber(ocr.startupProbeIntervalMs, appState.ocr.startupProbeIntervalMs, 500, 10000),
+      civReadOnce: ocr.civReadOnce === undefined ? appState.ocr.civReadOnce : Boolean(ocr.civReadOnce),
       minConfidence: clampNumber(ocr.minConfidence, appState.ocr.minConfidence, 0, 100),
       stableReadCount: clampNumber(ocr.stableReadCount, appState.ocr.stableReadCount, 1, 5),
       imageScale: clampNumber(ocr.imageScale, appState.ocr.imageScale, 1, 6),
+      topBarRegion: normalizeRegion(ocr.topBarRegion, appState.ocr.topBarRegion),
       villagerRegion: normalizeRegion(ocr.villagerRegion, appState.ocr.villagerRegion),
       civRegion: normalizeRegion(ocr.civRegion, appState.ocr.civRegion)
     };
@@ -195,11 +231,15 @@ function updateState(partial, options = {}) {
     syncDetectorSettings();
   }
 
-  syncLaunchAtLogin();
+  if (shouldSyncLaunchAtLogin) {
+    syncLaunchAtLogin();
+  }
   syncGlobalShortcuts();
   applyOverlayPosition();
   applyOverlayWindowState();
-  updateTrayMenu();
+  if (shouldUpdateTray) {
+    updateTrayMenu();
+  }
   if (options.persist !== false) {
     persistState();
   }
@@ -238,12 +278,12 @@ function applyOverlayPosition() {
 }
 
 function shouldShowOverlay() {
-  return appState.overlayEnabled && (!appState.overlayOnlyWhenAoe || appState.aoeRunning);
+  return appState.overlayEnabled && (!appState.overlayOnlyWhenAoe || appState.inMatch);
 }
 
 function createTray() {
   tray = new Tray(createTrayIcon());
-  tray.setToolTip('AOE2 Build Overlay');
+  tray.setToolTip('Knappe der Rauen Schlacht');
   tray.on('double-click', () => {
     showDashboard();
   });
@@ -257,36 +297,36 @@ function updateTrayMenu() {
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Show dashboard',
+      label: 'KDRS anzeigen',
       click: () => showDashboard()
     },
     {
-      label: appState.overlayEnabled ? 'Hide overlay' : 'Show overlay',
+      label: appState.overlayEnabled ? 'Overlay ausblenden' : 'Overlay anzeigen',
       click: () => updateState({ overlayEnabled: !appState.overlayEnabled })
     },
     {
-      label: appState.overlayOnlyWhenAoe ? 'Overlay only while AOE2: on' : 'Overlay only while AOE2: off',
+      label: appState.overlayOnlyWhenAoe ? 'Overlay nur bei AOE2: an' : 'Overlay nur bei AOE2: aus',
       click: () => updateState({ overlayOnlyWhenAoe: !appState.overlayOnlyWhenAoe })
     },
     {
-      label: appState.overlayClickThrough ? 'Disable click-through' : 'Enable click-through',
+      label: appState.overlayClickThrough ? 'Klick-Durchlass ausschalten' : 'Klick-Durchlass einschalten',
       click: () => updateState({ overlayClickThrough: !appState.overlayClickThrough })
     },
     {
-      label: 'Reset overlay position',
+      label: 'Overlay-Position zuruecksetzen',
       click: () => resetOverlayPosition()
     },
     {
-      label: appState.hotkeysEnabled ? 'Disable hotkeys' : 'Enable hotkeys',
+      label: appState.hotkeysEnabled ? 'Hotkeys ausschalten' : 'Hotkeys einschalten',
       click: () => updateState({ hotkeysEnabled: !appState.hotkeysEnabled })
     },
     {
-      label: appState.launchAtLogin ? 'Start with Windows: on' : 'Start with Windows: off',
+      label: appState.launchAtLogin ? 'Mit Windows starten: an' : 'Mit Windows starten: aus',
       click: () => updateState({ launchAtLogin: !appState.launchAtLogin })
     },
     { type: 'separator' },
     {
-      label: 'Quit',
+      label: 'Beenden',
       click: () => {
         isQuitting = true;
         app.quit();
@@ -323,8 +363,11 @@ function moveDashboardToCompanionDisplay() {
 function createTrayIcon() {
   const svg = [
     '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">',
-    '<rect width="32" height="32" rx="6" fill="#1f5f55"/>',
-    '<path d="M7 21h18v4H7zM9 18l3-10 4 7 4-7 3 10z" fill="#f0c05a"/>',
+    '<rect width="32" height="32" rx="4" fill="#24140c"/>',
+    '<rect x="3" y="3" width="26" height="26" rx="3" fill="#8f6a32" opacity=".95"/>',
+    '<rect x="5" y="5" width="22" height="22" rx="2" fill="#2d1a10"/>',
+    '<path d="M16 7l8 4v5c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10v-5z" fill="#c69a45"/>',
+    '<path d="M16 10v12M12 14h8" stroke="#2d1a10" stroke-width="2" stroke-linecap="round"/>',
     '</svg>'
   ].join('');
 
@@ -398,8 +441,6 @@ function syncGlobalShortcuts() {
     return;
   }
 
-  registerGlobalShortcut('Control+Shift+Up', () => adjustVillagerCount(1));
-  registerGlobalShortcut('Control+Shift+Down', () => adjustVillagerCount(-1));
   registerGlobalShortcut('Control+Shift+O', () => updateState({ overlayEnabled: !appState.overlayEnabled }));
   registerGlobalShortcut('Control+Shift+D', () => showDashboard());
   registerGlobalShortcut('Control+Alt+Left', () => nudgeOverlay(-16, 0));
@@ -447,12 +488,16 @@ app.whenReady().then(() => {
   createOverlayWindow();
   applyOverlayWindowState();
 
-  detector = new Detector({ desktopCapturer, screen, tesseract, civs: civData.civilizations });
+  detector = new Detector({ desktopCapturer, screen, nativeImage, civs: civData.civilizations });
   syncDetectorSettings();
   detector.on('state', (detectorState) => {
     const wasAoeRunning = appState.aoeRunning;
     const detectorUpdate = {
       aoeRunning: detectorState.aoeRunning,
+      inMatch: detectorState.inMatch,
+      sessionStatus: detectorState.sessionStatus,
+      captureProvider: detectorState.captureProvider,
+      captureStats: detectorState.captureStats,
       ocr: detectorState.ocr
     };
 
@@ -542,9 +587,9 @@ function mergeRecommendations(defaultRecommendations, customRecommendations) {
 async function importBuilds() {
   try {
     const result = await dialog.showOpenDialog(dashboardWindow, {
-      title: 'Import build orders',
+      title: 'Buildorders importieren',
       properties: ['openFile'],
-      filters: [{ name: 'Build order JSON', extensions: ['json'] }]
+      filters: [{ name: 'Buildorder JSON', extensions: ['json'] }]
     });
 
     if (result.canceled || !result.filePaths[0]) {
@@ -575,9 +620,9 @@ async function importBuilds() {
 
 async function exportBuilds() {
   const result = await dialog.showSaveDialog(dashboardWindow, {
-    title: 'Export custom build orders',
+    title: 'Eigene Buildorders exportieren',
     defaultPath: 'aoe2-custom-build-orders.json',
-    filters: [{ name: 'Build order JSON', extensions: ['json'] }]
+    filters: [{ name: 'Buildorder JSON', extensions: ['json'] }]
   });
 
   if (result.canceled || !result.filePath) {
@@ -674,6 +719,7 @@ function syncDetectorSettings() {
 
   detector.updateSettings({
     detectionMode: appState.detectionMode,
+    civ: appState.civ,
     selectedDisplayId: appState.selectedDisplayId,
     villagerCount: appState.villagerCount,
     ocr: appState.ocr
@@ -700,15 +746,26 @@ function updateStateFromSettings(settings) {
   }
 
   Object.assign(appState, allowed);
+  if (appState.detectionMode !== 'ocr') {
+    appState.detectionMode = 'ocr';
+  }
 
   if (settings.ocr) {
     appState.ocr = {
       ...appState.ocr,
       ...settings.ocr,
-      intervalMs: clampNumber(settings.ocr.intervalMs, appState.ocr.intervalMs, 500, 10000),
+      intervalMs: clampNumber(settings.ocr.intervalMs, appState.ocr.intervalMs, 5000, 20000),
+      civIntervalMs: clampNumber(settings.ocr.civIntervalMs, appState.ocr.civIntervalMs, 15000, 300000),
+      captureProvider: ['auto', 'node-screenshots'].includes(settings.ocr.captureProvider)
+        ? settings.ocr.captureProvider
+        : appState.ocr.captureProvider,
+      captureIntervalMs: clampNumber(settings.ocr.captureIntervalMs, appState.ocr.captureIntervalMs, 1000, 10000),
+      startupProbeIntervalMs: clampNumber(settings.ocr.startupProbeIntervalMs, appState.ocr.startupProbeIntervalMs, 500, 10000),
+      civReadOnce: settings.ocr.civReadOnce === undefined ? appState.ocr.civReadOnce : Boolean(settings.ocr.civReadOnce),
       minConfidence: clampNumber(settings.ocr.minConfidence, appState.ocr.minConfidence, 0, 100),
       stableReadCount: clampNumber(settings.ocr.stableReadCount, appState.ocr.stableReadCount, 1, 5),
       imageScale: clampNumber(settings.ocr.imageScale, appState.ocr.imageScale, 1, 6),
+      topBarRegion: normalizeRegion(settings.ocr.topBarRegion, appState.ocr.topBarRegion),
       villagerRegion: normalizeRegion(settings.ocr.villagerRegion, appState.ocr.villagerRegion),
       civRegion: normalizeRegion(settings.ocr.civRegion, appState.ocr.civRegion)
     };
@@ -719,15 +776,15 @@ function updateStateFromSettings(settings) {
   }
 }
 
-function getDefaultOverlayPosition(width = 560, height = 118) {
+function getDefaultOverlayPosition(width = OVERLAY_WIDTH, height = OVERLAY_HEIGHT) {
   const targetDisplay = screen.getPrimaryDisplay();
   return {
-    x: targetDisplay.bounds.x + Math.round((targetDisplay.bounds.width - width) / 2),
-    y: targetDisplay.bounds.y + 24
+    x: targetDisplay.bounds.x + targetDisplay.bounds.width - width - 24,
+    y: targetDisplay.bounds.y + 92
   };
 }
 
-function normalizeOverlayPosition(position, width = 560, height = 118) {
+function normalizeOverlayPosition(position, width = OVERLAY_WIDTH, height = OVERLAY_HEIGHT) {
   const fallback = getDefaultOverlayPosition(width, height);
   const source = position || fallback;
   const x = Number.isFinite(source.x) ? Math.round(source.x) : fallback.x;
@@ -742,12 +799,13 @@ function normalizeOverlayPosition(position, width = 560, height = 118) {
 }
 
 function normalizeRegion(region, fallback) {
-  const source = region || fallback;
+  const safeFallback = fallback || { x: 0, y: 0, width: 0.1, height: 0.1 };
+  const source = region || safeFallback;
   return {
-    x: clampPercent(source.x, fallback.x),
-    y: clampPercent(source.y, fallback.y),
-    width: clampPercent(source.width, fallback.width),
-    height: clampPercent(source.height, fallback.height)
+    x: clampPercent(source.x, safeFallback.x),
+    y: clampPercent(source.y, safeFallback.y),
+    width: clampPercent(source.width, safeFallback.width),
+    height: clampPercent(source.height, safeFallback.height)
   };
 }
 
