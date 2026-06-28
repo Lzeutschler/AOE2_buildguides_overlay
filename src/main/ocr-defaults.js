@@ -1,5 +1,6 @@
 const DEFAULT_OCR_REGIONS = {
   topBarRegion: { x: 0, y: 0, width: 1, height: 0.075 },
+  loadingScreenRegion: { x: 0.075, y: 0.13, width: 0.215, height: 0.72 },
   villagerRegion: { x: 0.224, y: 0.029, width: 0.018, height: 0.022 },
   // Per-resource villager counts share one baseline, glyph size and an equal
   // horizontal spacing (the small white number on each icon's bottom-right
@@ -72,7 +73,7 @@ const DEFAULT_OCR_SETTINGS = {
   intervalMs: 5000,
   captureProvider: 'auto',
   captureIntervalMs: 2500,
-  startupProbeIntervalMs: 1000,
+  startupProbeIntervalMs: 250,
   minConfidence: 55,
   stableReadCount: 2,
   imageScale: 6,

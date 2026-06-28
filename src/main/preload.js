@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('aoeOverlay', {
   getState: () => ipcRenderer.invoke('state:get'),
   getOcrPreview: () => ipcRenderer.invoke('ocr:preview'),
   testOcr: () => ipcRenderer.invoke('ocr:test'),
+  openLoadingScreenDebug: () => ipcRenderer.invoke('debug:open-loading-screen'),
   importBuilds: () => ipcRenderer.invoke('builds:import'),
   exportBuilds: () => ipcRenderer.invoke('builds:export'),
   onState: (callback) => {

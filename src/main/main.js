@@ -1,11 +1,12 @@
 const path = require('node:path');
 const fs = require('node:fs');
-const { app, BrowserWindow, Menu, Tray, nativeImage, globalShortcut, ipcMain, screen, desktopCapturer, dialog } = require('electron');
+const { app, BrowserWindow, Menu, Tray, nativeImage, globalShortcut, ipcMain, screen, desktopCapturer, dialog, shell } = require('electron');
 const baseBuildData = require('../data/build-orders.json');
 const heraBuildData = require('../data/hera-build-orders.json');
 const civData = require('../data/civilizations.json');
+const opponentRecommendationData = require('../data/opponent-recommendations.json');
 const { Detector } = require('./detector');
-const { findBuild, getBuildProgress, getRecommendedBuilds } = require('./build-engine');
+const { findBuild, getBuildProgress, getRecommendedBuilds, isBuildFinished } = require('./build-engine');
 const { loadSettings, saveSettings } = require('./settings-store');
 const { DEFAULT_OCR_SETTINGS, migrateLegacyOcrRegions } = require('./ocr-defaults');
 
@@ -35,8 +36,11 @@ const appState = {
     maxCaptureMs: null
   },
   civ: 'Generic',
+  playerName: 'Testodines',
   villagerCount: 6,
+  buildProgressVillagerCount: 6,
   resourceVillagers: { food: null, wood: null, gold: null, stone: null },
+  loadingScreen: createEmptyLoadingScreen(),
   selectedBuildId: 'generic-scouts',
   detectionMode: 'ocr',
   overlayEnabled: true,
@@ -52,6 +56,7 @@ const appState = {
 
 const persistedKeys = [
   'civ',
+  'playerName',
   'villagerCount',
   'selectedBuildId',
   'detectionMode',
@@ -135,8 +140,11 @@ function getCompanionDisplay() {
 
 function getPublicState() {
   const build = findBuild(buildData.builds, appState.selectedBuildId);
-  const progress = getBuildProgress(build, appState.villagerCount, appState.resourceVillagers);
+  const progress = getBuildProgress(build, appState.buildProgressVillagerCount);
   const recommendedBuilds = getRecommendedBuilds(buildData, appState.civ);
+  const buildFinished = isBuildFinished(build, appState.buildProgressVillagerCount);
+  const postBuildRecommendations = getPostBuildRecommendations(build);
+  const opponentRecommendations = getOpponentRecommendations(appState.loadingScreen?.enemies || []);
   const displays = screen.getAllDisplays().map((display) => ({
     id: display.id,
     label: display.label || `Display ${display.id}`,
@@ -148,6 +156,9 @@ function getPublicState() {
     ...appState,
     build,
     progress,
+    buildFinished,
+    postBuildRecommendations,
+    opponentRecommendations,
     recommendedBuilds,
     buildData,
     customBuildCount: customBuildData.builds.length,
@@ -166,8 +177,69 @@ function getCivs() {
   return [...names].sort((a, b) => a.localeCompare(b));
 }
 
+function getPostBuildRecommendations(build) {
+  if (Array.isArray(build?.postBuildRecommendations) && build.postBuildRecommendations.length > 0) {
+    return build.postBuildRecommendations;
+  }
+
+  const style = String(build?.style || '').toLowerCase();
+  if (style.includes('castle') || style.includes('boom')) {
+    return [
+      'Stabilisiere deine Eco mit TC-Produktion, Eco-Upgrades und sicheren Holzlinien.',
+      'Scoute den ersten Castle-Age-Plan des Gegners, bevor du dich auf TCs, Knights, Monks oder Unique Units festlegst.',
+      'Nutze dein Timing aktiv: Relics, Vorwaertspositionen oder Map-Control sind jetzt wichtiger als weitere Dark-Age-Details.'
+    ];
+  }
+
+  if (style.includes('archer') || style.includes('range')) {
+    return [
+      'Halte deine Archer zusammen und nimm keine Kaempfe ohne Fletching oder gute Position.',
+      'Wenn der Gegner viele Skirms baut, bereite Scouts, Siege oder einen schnelleren Castle-Age-Uebergang vor.',
+      'Wall hinter deiner Pressure und sichere Gold, damit Crossbow/Bodkin rechtzeitig kommen.'
+    ];
+  }
+
+  if (style.includes('scout') || style.includes('cavalry')) {
+    return [
+      'Nutze Scout-Mobilitaet fuer Damage und Scouting, nicht fuer schlechte Kaempfe gegen Speere.',
+      'Wall deine Basis, sobald du Map-Control hast, und plane den Uebergang zu Knights oder Skirms.',
+      'Wenn der Gegner voll auf Speere geht, wechsle in Range/Skirms oder spiele schneller Richtung Castle Age.'
+    ];
+  }
+
+  return [
+    'Scoute nach dem Build aktiv: Produktionsgebaeude, Goldzahl, Stone und Wall-Status entscheiden den Follow-up.',
+    'Halte TC-Produktion und Eco-Upgrades konstant, waehrend du deine erste Army nicht verlierst.',
+    'Reagiere auf den gegnerischen Plan statt blind weiterzuproduzieren.'
+  ];
+}
+
+function getOpponentRecommendations(enemies) {
+  const fallback = opponentRecommendationData.Generic;
+  return (Array.isArray(enemies) ? enemies : []).map((enemy) => ({
+    ...enemy,
+    recommendation: opponentRecommendationData[enemy.civ] || fallback
+  }));
+}
+
+function createEmptyLoadingScreen(status = 'idle') {
+  return {
+    status,
+    rawText: '',
+    players: [],
+    self: null,
+    enemies: [],
+    confidence: null,
+    source: null,
+    capturedAt: null,
+    lastReadAt: null
+  };
+}
+
 function updateState(partial, options = {}) {
   const { ocr, overlayPosition, ...rest } = partial;
+  const previousSelectedBuildId = appState.selectedBuildId;
+  const previousInMatch = appState.inMatch;
   const shouldSyncLaunchAtLogin = Object.prototype.hasOwnProperty.call(rest, 'launchAtLogin');
   const shouldUpdateTray = [
     'overlayEnabled',
@@ -190,11 +262,12 @@ function updateState(partial, options = {}) {
         ? ocr.captureProvider
         : appState.ocr.captureProvider,
       captureIntervalMs: clampNumber(ocr.captureIntervalMs, appState.ocr.captureIntervalMs, 1000, 10000),
-      startupProbeIntervalMs: clampNumber(ocr.startupProbeIntervalMs, appState.ocr.startupProbeIntervalMs, 500, 10000),
+      startupProbeIntervalMs: clampNumber(ocr.startupProbeIntervalMs, appState.ocr.startupProbeIntervalMs, 250, 10000),
       minConfidence: clampNumber(ocr.minConfidence, appState.ocr.minConfidence, 0, 100),
       stableReadCount: clampNumber(ocr.stableReadCount, appState.ocr.stableReadCount, 1, 5),
       imageScale: clampNumber(ocr.imageScale, appState.ocr.imageScale, 1, 6),
       topBarRegion: normalizeRegion(ocr.topBarRegion, appState.ocr.topBarRegion),
+      loadingScreenRegion: normalizeRegion(ocr.loadingScreenRegion, appState.ocr.loadingScreenRegion),
       villagerRegion: normalizeRegion(ocr.villagerRegion, appState.ocr.villagerRegion),
       foodVilRegion: normalizeRegion(ocr.foodVilRegion, appState.ocr.foodVilRegion),
       woodVilRegion: normalizeRegion(ocr.woodVilRegion, appState.ocr.woodVilRegion),
@@ -215,6 +288,12 @@ function updateState(partial, options = {}) {
     appState.selectedBuildId = recommendedBuilds[0].id;
   }
 
+  syncBuildProgressVillagerCount({
+    selectedBuildChanged: previousSelectedBuildId !== appState.selectedBuildId,
+    sessionReset: previousInMatch && rest.inMatch === false,
+    villagerUpdated: Object.prototype.hasOwnProperty.call(rest, 'villagerCount')
+  });
+
   if (detector) {
     syncDetectorSettings();
   }
@@ -232,6 +311,27 @@ function updateState(partial, options = {}) {
     persistState();
   }
   broadcastState();
+}
+
+function syncBuildProgressVillagerCount({ selectedBuildChanged, sessionReset, villagerUpdated }) {
+  if (sessionReset) {
+    appState.buildProgressVillagerCount = 0;
+    return;
+  }
+
+  if (selectedBuildChanged) {
+    appState.buildProgressVillagerCount = appState.inMatch && Number.isFinite(appState.villagerCount)
+      ? appState.villagerCount
+      : 0;
+    return;
+  }
+
+  if (villagerUpdated && Number.isFinite(appState.villagerCount)) {
+    appState.buildProgressVillagerCount = Math.max(
+      Number.isFinite(appState.buildProgressVillagerCount) ? appState.buildProgressVillagerCount : 0,
+      appState.villagerCount
+    );
+  }
 }
 
 function persistState() {
@@ -392,6 +492,17 @@ function registerIpc() {
     return detector.testOcr();
   });
 
+  ipcMain.handle('debug:open-loading-screen', async () => {
+    const dir = getLoadingScreenDebugDir();
+    fs.mkdirSync(dir, { recursive: true });
+    const error = await shell.openPath(dir);
+    return {
+      ok: !error,
+      path: dir,
+      error
+    };
+  });
+
   ipcMain.on('state:update', (_event, partial) => {
     updateState(partial);
   });
@@ -476,7 +587,13 @@ app.whenReady().then(() => {
   createOverlayWindow();
   applyOverlayWindowState();
 
-  detector = new Detector({ desktopCapturer, screen, nativeImage });
+  detector = new Detector({
+    desktopCapturer,
+    screen,
+    nativeImage,
+    civilizations: civData.civilizations,
+    loadingDebugDir: getLoadingScreenDebugDir()
+  });
   syncDetectorSettings();
   detector.on('state', (detectorState) => {
     const wasAoeRunning = appState.aoeRunning;
@@ -486,8 +603,13 @@ app.whenReady().then(() => {
       sessionStatus: detectorState.sessionStatus,
       captureProvider: detectorState.captureProvider,
       captureStats: detectorState.captureStats,
+      loadingScreen: detectorState.loadingScreen,
       ocr: detectorState.ocr
     };
+
+    if (appState.detectionMode === 'ocr' && detectorState.loadingScreen?.self?.civ) {
+      detectorUpdate.civ = detectorState.loadingScreen.self.civ;
+    }
 
     if (appState.detectionMode === 'ocr' && Number.isFinite(detectorState.villagerCount)) {
       detectorUpdate.villagerCount = detectorState.villagerCount;
@@ -529,6 +651,10 @@ function saveCustomBuildData() {
 
 function getCustomBuildsPath() {
   return path.join(app.getPath('userData'), 'custom-build-orders.json');
+}
+
+function getLoadingScreenDebugDir() {
+  return path.join(app.getPath('userData'), 'loading-screen-debug');
 }
 
 function rebuildBuildData() {
@@ -670,6 +796,9 @@ function normalizeBuild(build) {
     style: String(build.style || 'Custom').trim() || 'Custom',
     summary: String(build.summary || '').trim(),
     civs: Array.isArray(build.civs) ? build.civs.map((civ) => String(civ).trim()).filter(Boolean) : ['Generic'],
+    postBuildRecommendations: Array.isArray(build.postBuildRecommendations)
+      ? build.postBuildRecommendations.map((item) => String(item).trim()).filter(Boolean)
+      : [],
     steps
   };
 }
@@ -708,6 +837,8 @@ function syncDetectorSettings() {
   detector.updateSettings({
     detectionMode: appState.detectionMode,
     selectedDisplayId: appState.selectedDisplayId,
+    civ: appState.civ,
+    playerName: appState.playerName,
     villagerCount: appState.villagerCount,
     ocr: appState.ocr
   });
@@ -747,11 +878,12 @@ function updateStateFromSettings(settings) {
         ? migratedOcr.captureProvider
         : appState.ocr.captureProvider,
       captureIntervalMs: clampNumber(migratedOcr.captureIntervalMs, appState.ocr.captureIntervalMs, 1000, 10000),
-      startupProbeIntervalMs: clampNumber(migratedOcr.startupProbeIntervalMs, appState.ocr.startupProbeIntervalMs, 500, 10000),
+      startupProbeIntervalMs: clampNumber(migratedOcr.startupProbeIntervalMs, appState.ocr.startupProbeIntervalMs, 250, 10000),
       minConfidence: clampNumber(migratedOcr.minConfidence, appState.ocr.minConfidence, 0, 100),
       stableReadCount: clampNumber(migratedOcr.stableReadCount, appState.ocr.stableReadCount, 1, 5),
       imageScale: clampNumber(migratedOcr.imageScale, appState.ocr.imageScale, 1, 6),
       topBarRegion: normalizeRegion(migratedOcr.topBarRegion, appState.ocr.topBarRegion),
+      loadingScreenRegion: normalizeRegion(migratedOcr.loadingScreenRegion, appState.ocr.loadingScreenRegion),
       villagerRegion: normalizeRegion(migratedOcr.villagerRegion, appState.ocr.villagerRegion),
       foodVilRegion: normalizeRegion(migratedOcr.foodVilRegion, appState.ocr.foodVilRegion),
       woodVilRegion: normalizeRegion(migratedOcr.woodVilRegion, appState.ocr.woodVilRegion),

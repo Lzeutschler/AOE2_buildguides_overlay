@@ -2,6 +2,9 @@ const overlayCiv = document.querySelector('#overlayCiv');
 const overlayVillagers = document.querySelector('#overlayVillagers');
 const overlaySteps = document.querySelector('#overlaySteps');
 const overlayResources = document.querySelector('#overlayResources');
+const overlayAdvice = document.querySelector('#overlayAdvice');
+const overlayGeneralAdvice = document.querySelector('#overlayGeneralAdvice');
+const overlayEnemyAdvice = document.querySelector('#overlayEnemyAdvice');
 const resourceCells = {
   food: document.querySelector('#resFood'),
   wood: document.querySelector('#resWood'),
@@ -14,14 +17,25 @@ window.aoeOverlay.onState(render);
 
 function render(state) {
   const current = state.progress.current || state.build.steps[0];
+  const buildVillagerCount = Number.isFinite(state.buildProgressVillagerCount)
+    ? state.buildProgressVillagerCount
+    : state.villagerCount;
   const steps = state.progress.upcoming?.length
     ? state.progress.upcoming
-    : [current, ...(state.build.steps || []).filter((step) => step.villagers > state.villagerCount).slice(0, 3)];
+    : [current, ...(state.build.steps || []).filter((step) => step.villagers > buildVillagerCount).slice(0, 3)];
 
   overlayCiv.textContent = state.civ;
   overlayVillagers.textContent = `${state.villagerCount} Dorfb.`;
   renderResources(state.resourceVillagers);
-  overlaySteps.replaceChildren(...steps.slice(0, 4).map((step, index) => renderStep(step, current, index, state.resourceVillagers)));
+  overlaySteps.hidden = Boolean(state.buildFinished);
+  overlayAdvice.hidden = !state.buildFinished;
+
+  if (state.buildFinished) {
+    renderAdvice(state);
+    overlaySteps.replaceChildren();
+  } else {
+    overlaySteps.replaceChildren(...steps.slice(0, 4).map((step, index) => renderStep(step, current, index, state.resourceVillagers)));
+  }
 }
 
 function renderResources(resourceVillagers) {
@@ -75,6 +89,29 @@ function formatStepProgress(step, resourceKey, index, resourceVillagers) {
   }
 
   return `${step.villagers}`;
+}
+
+function renderAdvice(state) {
+  const generalItems = (state.postBuildRecommendations || []).slice(0, 3);
+  const enemyItems = (state.opponentRecommendations || []).slice(0, 3);
+  overlayGeneralAdvice.replaceChildren(...generalItems.map((text) => renderAdviceItem(text)));
+  overlayEnemyAdvice.replaceChildren(...enemyItems.map((enemy) => renderEnemyAdviceItem(enemy)));
+}
+
+function renderAdviceItem(text) {
+  const item = document.createElement('li');
+  item.textContent = text;
+  return item;
+}
+
+function renderEnemyAdviceItem(enemy) {
+  const item = document.createElement('li');
+  const title = document.createElement('strong');
+  title.textContent = enemy.civ || 'Gegner';
+  const copy = document.createElement('span');
+  copy.textContent = enemy.recommendation?.counter || enemy.recommendation?.expected || 'Scoute den Plan und reagiere flexibel.';
+  item.append(title, copy);
+  return item;
 }
 
 function getStepIcon(step) {

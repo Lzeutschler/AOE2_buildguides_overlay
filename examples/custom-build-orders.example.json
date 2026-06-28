@@ -10,6 +10,10 @@
       "style": "Feudal pressure",
       "summary": "Example custom build order imported by the dashboard.",
       "civs": ["Generic", "Franks"],
+      "postBuildRecommendations": [
+        "Keep scouting after the opening and choose the follow-up from the enemy production buildings.",
+        "Wall behind your pressure and prepare the Castle Age transition before floating resources."
+      ],
       "steps": [
         {
           "villagers": 6,

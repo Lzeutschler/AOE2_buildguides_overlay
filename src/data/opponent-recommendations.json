@@ -1,0 +1,72 @@
+{
+  "Generic": {
+    "expected": "Flexible Feudal pressure or a standard Fast Castle setup.",
+    "scout": "Scout early military buildings, gold timing and wall progress.",
+    "counter": "Stay active with small army, keep walls tidy and choose the counter unit after scouting."
+  },
+  "Romans": {
+    "expected": "Infantry pressure into strong Castle Age infantry or a compact Fast Castle.",
+    "scout": "Watch for early barracks activity and fast blacksmith upgrades.",
+    "counter": "Use archers, walls and clean focus fire; avoid taking long melee fights without upgrades."
+  },
+  "Berbers": {
+    "expected": "Scout opening into cheap Castle Age knights or camel pressure.",
+    "scout": "Check stable timing, gold count and whether they add a second stable.",
+    "counter": "Add spears early, wall resource edges and prepare monks or camels for Castle Age."
+  },
+  "Malians": {
+    "expected": "Flexible militia, archers or scouts backed by a smooth economy.",
+    "scout": "Identify the first production building quickly; Malians can pivot easily.",
+    "counter": "Do not overcommit blind; defend the first unit line and keep scouting for the tech switch."
+  },
+  "Georgians": {
+    "expected": "Fast scouts with mule-cart economy into cavalry pressure.",
+    "scout": "Look for stable timing and how many scouts are actually committed.",
+    "counter": "Small walls plus spears buy time; punish if they spend too little time in Feudal."
+  },
+  "Tatars": {
+    "expected": "Archers or scouts into strong hill control and cavalry archers later.",
+    "scout": "Check range versus stable and respect elevated fights.",
+    "counter": "Fight off hills, add skirms versus archers and keep mobility ready for Castle Age."
+  },
+  "Cumans": {
+    "expected": "Feudal boom with second TC or heavy Feudal military.",
+    "scout": "Confirm second TC immediately; the response changes completely.",
+    "counter": "If second TC appears, pressure hard before the economy pays off; otherwise defend standard Feudal."
+  },
+  "Shu": {
+    "expected": "Infantry-forward pressure with flexible follow-up.",
+    "scout": "Track barracks count and early blacksmith upgrades.",
+    "counter": "Archers and walls are the clean first answer; avoid idle TC while defending."
+  },
+  "Bohemians": {
+    "expected": "Defensive economy into strong monks, siege or gunpowder timings.",
+    "scout": "Watch gold, stone and fast Castle indicators.",
+    "counter": "Pressure before the tech mass; use mobility and avoid slow fights into siege."
+  },
+  "Muisca": {
+    "expected": "Demo data: mixed Feudal pressure into economy scaling.",
+    "scout": "Confirm whether the first building is range, stable or defensive market play.",
+    "counter": "Keep the opening flexible and choose skirms, spears or scouts after the first scout pass."
+  },
+  "Wei": {
+    "expected": "Demo data: cavalry or infantry pressure with a strong timing window.",
+    "scout": "Track stable, barracks and gold commitment.",
+    "counter": "Use small walls and the correct trash counter while preparing a Castle Age answer."
+  },
+  "Hindustanis": {
+    "expected": "Strong economy into camels, hand cannons or flexible Feudal play.",
+    "scout": "Watch gold timing and whether they open scouts or archers.",
+    "counter": "Avoid knight-only plans; use archers, pikes, monks or your own ranged power."
+  },
+  "Sicilians": {
+    "expected": "Scouts, defensive boom or Serjeant/donjon pressure.",
+    "scout": "Check for forward villagers and stone commitment.",
+    "counter": "Deny forward buildings early; use ranged units and avoid inefficient trash fights."
+  },
+  "Burgundians": {
+    "expected": "Greedy eco upgrades into cavalry or a strong Castle Age economy.",
+    "scout": "Look for early eco upgrades, stable timing and fast Castle greed.",
+    "counter": "Pressure greed, keep spears ready and do not let them reach a free boom uncontested."
+  }
+}

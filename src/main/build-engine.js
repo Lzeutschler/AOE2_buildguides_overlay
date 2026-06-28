@@ -46,7 +46,7 @@ function getCivNamedBuildIds(builds, civ) {
     .map((build) => build.id);
 }
 
-function getBuildProgress(build, villagerCount, resourceVillagers = {}) {
+function getBuildProgress(build, villagerCount) {
   if (!build) {
     return {
       current: null,
@@ -57,23 +57,24 @@ function getBuildProgress(build, villagerCount, resourceVillagers = {}) {
   }
 
   const sorted = annotateResourceGoals([...build.steps].sort((a, b) => a.villagers - b.villagers));
-  const completed = [];
-  let current = sorted[0] || null;
-
-  for (let index = 0; index < sorted.length; index += 1) {
-    const step = sorted[index];
-    const nextStep = sorted[index + 1] || null;
-    if (!isStepComplete(step, nextStep, villagerCount, resourceVillagers)) {
-      current = step;
-      break;
-    }
-
-    completed.push(step);
-    current = nextStep || step;
+  if (sorted.length === 0) {
+    return {
+      current: null,
+      next: null,
+      upcoming: [],
+      completed: [],
+      progress: 0
+    };
   }
 
-  const currentIndex = current ? sorted.findIndex((step) => step.villagers === current.villagers) : -1;
+  const safeVillagerCount = Number.isFinite(villagerCount) ? villagerCount : 0;
+  const lastStep = sorted[sorted.length - 1] || null;
+  const currentIndex = Math.max(0, sorted.findLastIndex((step) => safeVillagerCount >= step.villagers));
+  const current = sorted[currentIndex] || sorted[0] || null;
   const next = currentIndex >= 0 ? sorted[currentIndex + 1] || null : null;
+  const completed = lastStep && safeVillagerCount > lastStep.villagers
+    ? sorted
+    : sorted.slice(0, currentIndex);
   const upcoming = [
     current,
     ...sorted.slice(currentIndex + 1, currentIndex + 4)
@@ -87,6 +88,20 @@ function getBuildProgress(build, villagerCount, resourceVillagers = {}) {
     completed,
     progress
   };
+}
+
+function isBuildFinished(build, villagerCount) {
+  const maxVillagers = getBuildMaxVillagers(build);
+  return Number.isFinite(maxVillagers)
+    && Number.isFinite(villagerCount)
+    && villagerCount > maxVillagers;
+}
+
+function getBuildMaxVillagers(build) {
+  const values = Array.isArray(build?.steps)
+    ? build.steps.map((step) => Number(step.villagers)).filter(Number.isFinite)
+    : [];
+  return values.length > 0 ? Math.max(...values) : NaN;
 }
 
 const RESOURCE_KEYS = ['food', 'wood', 'gold', 'stone'];
@@ -118,36 +133,6 @@ function annotateResourceGoals(steps) {
       }
       : { ...step };
   });
-}
-
-function isStepComplete(step, nextStep, villagerCount, resourceVillagers) {
-  const resourceState = getResourceGoalState(step, resourceVillagers);
-  if (resourceState.known) {
-    return resourceState.complete;
-  }
-
-  if (nextStep) {
-    return Number.isFinite(villagerCount) && villagerCount >= nextStep.villagers;
-  }
-
-  return Number.isFinite(villagerCount) && villagerCount >= step.villagers;
-}
-
-function getResourceGoalState(step, resourceVillagers) {
-  const goal = step?.resourceGoal;
-  if (!goal || !RESOURCE_KEYS.includes(goal.key) || !Number.isFinite(goal.target)) {
-    return { known: false, complete: false };
-  }
-
-  const value = resourceVillagers?.[goal.key];
-  if (!Number.isFinite(value)) {
-    return { known: false, complete: false };
-  }
-
-  return {
-    known: true,
-    complete: value >= goal.target
-  };
 }
 
 function inferResourceDeltas(step) {
@@ -233,5 +218,7 @@ function normalizeName(value) {
 module.exports = {
   findBuild,
   getRecommendedBuilds,
-  getBuildProgress
+  getBuildProgress,
+  getBuildMaxVillagers,
+  isBuildFinished
 };

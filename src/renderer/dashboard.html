@@ -102,27 +102,49 @@
             </div>
           </section>
 
-          <section class="panel build-panel">
-            <div class="build-header">
-              <div>
-                <h2 id="buildName">Schlachtplan</h2>
-                <p id="buildSummary"></p>
+          <section class="runner-grid">
+            <section class="panel build-panel">
+              <div class="build-header">
+                <div>
+                  <h2 id="buildName">Schlachtplan</h2>
+                  <p id="buildSummary"></p>
+                </div>
+                <div class="progress-ring">
+                  <span id="progressPercent">0%</span>
+                </div>
               </div>
-              <div class="progress-ring">
-                <span id="progressPercent">0%</span>
-              </div>
-            </div>
 
-            <div class="next-step">
-              <div class="next-step-meta">
-                <img id="stepIcon" class="step-icon" alt="">
-                <span id="stepVillagers">6 Dorfb.</span>
+              <div class="next-step">
+                <div class="next-step-meta">
+                  <img id="stepIcon" class="step-icon" alt="">
+                  <span id="stepVillagers">6 Dorfb.</span>
+                </div>
+                <h3 id="stepTitle">Start</h3>
+                <p id="stepInstruction"></p>
               </div>
-              <h3 id="stepTitle">Start</h3>
-              <p id="stepInstruction"></p>
-            </div>
 
-            <ol class="timeline" id="timeline"></ol>
+              <ol class="timeline" id="timeline"></ol>
+            </section>
+
+            <aside class="panel advice-panel">
+              <div class="section-heading">
+                <div>
+                  <span class="kicker">Empfehlungen</span>
+                  <h2>Nach dem Build</h2>
+                </div>
+                <span id="detectedMatchup" class="soft-badge">kein Gegner</span>
+              </div>
+
+              <section class="advice-section">
+                <h3>Allgemein</h3>
+                <ul id="dashboardGeneralAdvice"></ul>
+              </section>
+
+              <section class="advice-section">
+                <h3>Gegner-Counter</h3>
+                <div id="dashboardEnemyAdvice" class="enemy-advice-list"></div>
+              </section>
+            </aside>
           </section>
         </section>
       </section>
@@ -140,6 +162,11 @@
             <div class="field">
               <label for="displaySelect">AOE2-Bildschirm</label>
               <select id="displaySelect"></select>
+            </div>
+
+            <div class="field">
+              <label for="playerName">Dein AOE2-Name</label>
+              <input id="playerName" type="text" placeholder="Testodines">
             </div>
 
             <div class="detected-count">
@@ -178,7 +205,10 @@
               <h2>OCR-Kalibrierung</h2>
               <p>Die obere AOE2-Leiste wird als Hauptbereich aufgenommen. Dorfbewohner- und Rohstoffzahlen liegen darin als gezielte OCR-Ausschnitte.</p>
               </div>
-              <button id="refreshPreview" class="secondary-button inline" type="button">Vorschau aktualisieren</button>
+              <div class="settings-actions">
+                <button id="openLoadingDebug" class="secondary-button inline" type="button">Loading-Debug</button>
+                <button id="refreshPreview" class="secondary-button inline" type="button">Vorschau aktualisieren</button>
+              </div>
             </div>
 
             <div class="ocr-settings">
@@ -187,7 +217,7 @@
                 <option value="node-screenshots">node-screenshots</option>
               </select></label>
               <label>Live-Intervall ms<input id="ocrCaptureIntervalMs" type="number" min="1000" max="10000" step="100"></label>
-              <label>Start-Probe ms<input id="ocrStartupProbeIntervalMs" type="number" min="500" max="10000" step="100"></label>
+              <label>Start-Probe ms<input id="ocrStartupProbeIntervalMs" type="number" min="250" max="10000" step="50"></label>
               <label>Min. Sicherheit<input id="ocrMinConfidence" type="number" min="0" max="100" step="1"></label>
               <label>Stabile Treffer<input id="ocrStableReadCount" type="number" min="1" max="5" step="1"></label>
               <label>OCR-Skalierung<input id="ocrImageScale" type="number" min="1" max="6" step="1"></label>
@@ -204,6 +234,20 @@
                 <label>Y px<input id="topBarRegionYpx" type="number" min="0" step="1"></label>
                 <label>B px<input id="topBarRegionWidthpx" type="number" min="1" step="1"></label>
                 <label>H px<input id="topBarRegionHeightpx" type="number" min="1" step="1"></label>
+              </div>
+            </div>
+
+            <div class="region" data-region="loadingScreenRegion">
+              <strong>Loading-Screen Spielerpanel</strong>
+              <div class="region-grid">
+                <label>X %<input id="loadingScreenRegionX" type="number" min="0" max="100" step="0.1"></label>
+                <label>Y %<input id="loadingScreenRegionY" type="number" min="0" max="100" step="0.1"></label>
+                <label>B %<input id="loadingScreenRegionWidth" type="number" min="0.1" max="100" step="0.1"></label>
+                <label>H %<input id="loadingScreenRegionHeight" type="number" min="0.1" max="100" step="0.1"></label>
+                <label>X px<input id="loadingScreenRegionXpx" type="number" min="0" step="1"></label>
+                <label>Y px<input id="loadingScreenRegionYpx" type="number" min="0" step="1"></label>
+                <label>B px<input id="loadingScreenRegionWidthpx" type="number" min="1" step="1"></label>
+                <label>H px<input id="loadingScreenRegionHeightpx" type="number" min="1" step="1"></label>
               </div>
             </div>
 
@@ -291,6 +335,7 @@
 
           <div class="calibration-tools" role="group" aria-label="OCR-Bereichswerkzeug">
             <button id="selectTopBarRegion" class="tool-button active" type="button">Obere Leiste</button>
+            <button id="selectLoadingScreenRegion" class="tool-button" type="button">Loading</button>
             <button id="selectVillagerRegion" class="tool-button" type="button">Dorfbewohner</button>
             <button id="selectFoodVilRegion" class="tool-button" type="button">Nahrung</button>
             <button id="selectWoodVilRegion" class="tool-button" type="button">Holz</button>
@@ -310,6 +355,10 @@
               <img id="screenPreview" alt="Screenshot des ausgewaehlten Bildschirms">
               <div id="topBarBox" class="region-box topbar-box">
                 <span>Obere Leiste</span>
+                <i class="handle handle-se"></i>
+              </div>
+              <div id="loadingScreenBox" class="region-box loading-box">
+                <span>Loading</span>
                 <i class="handle handle-se"></i>
               </div>
               <div id="villagerBox" class="region-box villager-box">
@@ -350,6 +399,10 @@
             <figure>
               <img id="villagerProcessedPreview" alt="Was die OCR sieht">
               <figcaption>Was die OCR sieht</figcaption>
+            </figure>
+            <figure>
+              <img id="loadingScreenPreview" alt="OCR-Vorschau des Loading-Screen-Spielerpanels">
+              <figcaption>Loading-Spielerpanel <b id="loadingScreenValue">-</b></figcaption>
             </figure>
           </div>
 

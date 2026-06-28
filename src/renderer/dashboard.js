@@ -46,8 +46,10 @@ const elements = {
   overlayNudgeRight: $('#overlayNudgeRight'),
   overlayResetPosition: $('#overlayResetPosition'),
   displaySelect: $('#displaySelect'),
+  playerName: $('#playerName'),
   ocrStatus: $('#ocrStatus'),
   ocrText: $('#ocrText'),
+  openLoadingDebug: $('#openLoadingDebug'),
   refreshPreview: $('#refreshPreview'),
   refreshPreview2: $('#refreshPreview2'),
   testOcr: $('#testOcr'),
@@ -55,6 +57,8 @@ const elements = {
   resetCalibration: $('#resetCalibration'),
   previewStatus: $('#previewStatus'),
   topBarPreview: $('#topBarPreview'),
+  loadingScreenPreview: $('#loadingScreenPreview'),
+  loadingScreenValue: $('#loadingScreenValue'),
   villagerPreview: $('#villagerPreview'),
   villagerProcessedPreview: $('#villagerProcessedPreview'),
   ocrVariants: $('#ocrVariants'),
@@ -74,6 +78,7 @@ const elements = {
   screenCalibrator: $('#screenCalibrator'),
   screenPreview: $('#screenPreview'),
   selectTopBarRegion: $('#selectTopBarRegion'),
+  selectLoadingScreenRegion: $('#selectLoadingScreenRegion'),
   selectVillagerRegion: $('#selectVillagerRegion'),
   selectFoodVilRegion: $('#selectFoodVilRegion'),
   selectWoodVilRegion: $('#selectWoodVilRegion'),
@@ -93,6 +98,7 @@ const elements = {
   },
   regionBoxes: {
     topBarRegion: $('#topBarBox'),
+    loadingScreenRegion: $('#loadingScreenBox'),
     villagerRegion: $('#villagerBox'),
     foodVilRegion: $('#foodVilBox'),
     woodVilRegion: $('#woodVilBox'),
@@ -105,6 +111,12 @@ const elements = {
       y: $('#topBarRegionY'),
       width: $('#topBarRegionWidth'),
       height: $('#topBarRegionHeight')
+    },
+    loadingScreenRegion: {
+      x: $('#loadingScreenRegionX'),
+      y: $('#loadingScreenRegionY'),
+      width: $('#loadingScreenRegionWidth'),
+      height: $('#loadingScreenRegionHeight')
     },
     villagerRegion: {
       x: $('#villagerRegionX'),
@@ -144,6 +156,12 @@ const elements = {
       width: $('#topBarRegionWidthpx'),
       height: $('#topBarRegionHeightpx')
     },
+    loadingScreenRegion: {
+      x: $('#loadingScreenRegionXpx'),
+      y: $('#loadingScreenRegionYpx'),
+      width: $('#loadingScreenRegionWidthpx'),
+      height: $('#loadingScreenRegionHeightpx')
+    },
     villagerRegion: {
       x: $('#villagerRegionXpx'),
       y: $('#villagerRegionYpx'),
@@ -182,11 +200,15 @@ const elements = {
   stepVillagers: $('#stepVillagers'),
   stepTitle: $('#stepTitle'),
   stepInstruction: $('#stepInstruction'),
-  timeline: $('#timeline')
+  timeline: $('#timeline'),
+  detectedMatchup: $('#detectedMatchup'),
+  dashboardGeneralAdvice: $('#dashboardGeneralAdvice'),
+  dashboardEnemyAdvice: $('#dashboardEnemyAdvice')
 };
 
 const defaultRegions = {
   topBarRegion: { x: 0, y: 0, width: 1, height: 0.075 },
+  loadingScreenRegion: { x: 0.075, y: 0.13, width: 0.215, height: 0.72 },
   villagerRegion: { x: 0.224, y: 0.029, width: 0.018, height: 0.022 },
   woodVilRegion: { x: 0.013281, y: 0.032639, width: 0.011719, height: 0.013194 },
   foodVilRegion: { x: 0.066016, y: 0.032639, width: 0.011719, height: 0.013194 },
@@ -197,7 +219,7 @@ const defaultRegions = {
 const defaultOcrSettings = {
   captureProvider: 'auto',
   captureIntervalMs: 2500,
-  startupProbeIntervalMs: 1000,
+  startupProbeIntervalMs: 250,
   minConfidence: 55,
   stableReadCount: 2,
   imageScale: 6
@@ -284,6 +306,10 @@ listen(elements.detectionMode, 'change', () => {
 
 listen(elements.displaySelect, 'change', () => {
   window.aoeOverlay.updateState({ selectedDisplayId: elements.displaySelect.value });
+});
+
+listen(elements.playerName, 'change', () => {
+  window.aoeOverlay.updateState({ playerName: elements.playerName.value.trim() || 'Testodines' });
 });
 
 listen(elements.villagerMinus, 'click', () => {
@@ -373,12 +399,20 @@ listen(elements.refreshPreview, 'click', async () => {
   await refreshPreview();
 });
 
+listen(elements.openLoadingDebug, 'click', async () => {
+  await openLoadingDebug();
+});
+
 listen(elements.testOcr, 'click', async () => {
   await testOcrNow();
 });
 
 listen(elements.selectTopBarRegion, 'click', () => {
   setActiveRegion('topBarRegion');
+});
+
+listen(elements.selectLoadingScreenRegion, 'click', () => {
+  setActiveRegion('loadingScreenRegion');
 });
 
 listen(elements.selectVillagerRegion, 'click', () => {
@@ -533,6 +567,9 @@ function render(state) {
   })), String(state.selectedDisplayId || state.displays[0]?.id || ''));
 
   elements.detectionMode.value = state.detectionMode;
+  if (elements.playerName && document.activeElement !== elements.playerName) {
+    elements.playerName.value = state.playerName || 'Testodines';
+  }
   elements.customBuildStatus.textContent = `${state.customBuildCount || 0} geladen`;
   elements.villagerCount.textContent = state.villagerCount;
   elements.overlayEnabled.checked = state.overlayEnabled;
@@ -576,7 +613,11 @@ function render(state) {
   elements.stepTitle.textContent = step.title;
   elements.stepInstruction.textContent = step.instruction;
 
-  elements.timeline.replaceChildren(...state.build.steps.map((item) => renderStep(item, step, next, state.villagerCount)));
+  const buildVillagerCount = Number.isFinite(state.buildProgressVillagerCount)
+    ? state.buildProgressVillagerCount
+    : state.villagerCount;
+  elements.timeline.replaceChildren(...state.build.steps.map((item) => renderStep(item, step, next, buildVillagerCount)));
+  renderAdvicePanel(state);
 }
 
 function renderBuildStage() {
@@ -792,6 +833,57 @@ function renderStep(item, current, next, villagerCount) {
   return li;
 }
 
+function renderAdvicePanel(state) {
+  const general = state.postBuildRecommendations || [];
+  const enemies = state.opponentRecommendations || [];
+  const detected = enemies.map((enemy) => enemy.civ).filter(Boolean);
+
+  elements.detectedMatchup.textContent = detected.length > 0
+    ? detected.join(', ')
+    : 'kein Gegner';
+  elements.dashboardGeneralAdvice.replaceChildren(...general.map((text) => {
+    const item = document.createElement('li');
+    item.textContent = text;
+    return item;
+  }));
+  elements.dashboardEnemyAdvice.replaceChildren(...(
+    enemies.length > 0
+      ? enemies.map(renderEnemyAdviceCard)
+      : [renderNoEnemyAdvice()]
+  ));
+}
+
+function renderEnemyAdviceCard(enemy) {
+  const card = document.createElement('article');
+  card.className = 'enemy-advice';
+
+  const title = document.createElement('h4');
+  title.textContent = enemy.civ || 'Gegner';
+
+  const expected = document.createElement('p');
+  expected.textContent = enemy.recommendation?.expected || 'Plan noch unbekannt.';
+
+  const scout = document.createElement('p');
+  scout.textContent = `Scouten: ${enemy.recommendation?.scout || 'Produktionsgebaeude und Ressourcen pruefen.'}`;
+
+  const counter = document.createElement('strong');
+  counter.textContent = enemy.recommendation?.counter || 'Flexibel reagieren.';
+
+  card.append(title, expected, scout, counter);
+  return card;
+}
+
+function renderNoEnemyAdvice() {
+  const empty = document.createElement('article');
+  empty.className = 'enemy-advice empty';
+  const title = document.createElement('h4');
+  title.textContent = 'Noch kein Loading Screen';
+  const copy = document.createElement('p');
+  copy.textContent = 'Sobald die Gegner-Civs erkannt wurden, stehen hier Counter-Empfehlungen.';
+  empty.append(title, copy);
+  return empty;
+}
+
 function getStepIcon(step) {
   const resourceGoal = step?.resourceGoal?.key;
   const text = `${step?.title || ''} ${step?.instruction || ''}`.toLowerCase();
@@ -915,8 +1007,28 @@ function formatOcrText(state) {
   const stats = state.captureStats
     ? `${state.captureStats.provider || state.captureProvider || '-'} ${state.captureStats.lastCaptureMs ?? '-'}ms / Schnitt ${state.captureStats.averageCaptureMs ?? '-'}ms`
     : '';
+  const loading = formatLoadingScreenText(state.loadingScreen);
 
-  return [state.sessionStatus, stats, ocr.lastText, detail, ocr.lastError].filter(Boolean).join(' | ');
+  return [state.sessionStatus, loading, stats, ocr.lastText, detail, ocr.lastError].filter(Boolean).join(' | ');
+}
+
+function formatLoadingScreenText(loadingScreen) {
+  if (!loadingScreen) {
+    return '';
+  }
+
+  const source = loadingScreen.source ? `/${loadingScreen.source}` : '';
+  const raw = loadingScreen.rawText
+    ? ` "${loadingScreen.rawText.trim().replace(/\s+/g, ' ').slice(0, 80)}"`
+    : '';
+
+  if (loadingScreen.status !== 'detected') {
+    return raw ? `Loading OCR${source} kein Match${raw}` : '';
+  }
+
+  const self = loadingScreen.self?.civ || '-';
+  const enemies = (loadingScreen.enemies || []).map((enemy) => enemy.civ).filter(Boolean).join(', ') || '-';
+  return `Loading ${self} vs ${enemies}${source}${raw}`;
 }
 
 function toPercent(value) {
@@ -944,6 +1056,12 @@ async function refreshPreview() {
     }
 
     elements.topBarPreview.src = preview.topBarRegion;
+    if (elements.loadingScreenPreview) {
+      elements.loadingScreenPreview.src = preview.loadingScreenRegion || '';
+    }
+    if (elements.loadingScreenValue) {
+      elements.loadingScreenValue.textContent = '-';
+    }
     elements.villagerPreview.src = preview.villagerRegion;
     elements.screenPreview.src = preview.fullFrame;
     if (preview.imageSize) {
@@ -952,6 +1070,19 @@ async function refreshPreview() {
     }
     elements.previewStatus.textContent = `Bildschirm ${preview.displayId} / ${preview.imageSize.width}x${preview.imageSize.height}`;
     renderRegionBoxes(currentState);
+  } catch (error) {
+    elements.previewStatus.textContent = error.message;
+  }
+}
+
+async function openLoadingDebug() {
+  elements.previewStatus.textContent = 'Oeffne Loading-Debug...';
+
+  try {
+    const result = await window.aoeOverlay.openLoadingScreenDebug();
+    elements.previewStatus.textContent = result?.ok
+      ? `Loading-Debug geoeffnet: ${result.path}`
+      : `Loading-Debug konnte nicht geoeffnet werden: ${result?.error || result?.path || '-'}`;
   } catch (error) {
     elements.previewStatus.textContent = error.message;
   }
@@ -980,6 +1111,12 @@ async function testOcrNow() {
     }
 
     elements.topBarPreview.src = result.topBarRegion;
+    if (elements.loadingScreenPreview) {
+      elements.loadingScreenPreview.src = result.loadingScreenRegion || '';
+    }
+    if (elements.loadingScreenValue) {
+      elements.loadingScreenValue.textContent = formatLoadingScreenProbe(result.loadingScreen);
+    }
     elements.villagerPreview.src = result.villagerRegion;
     if (elements.villagerProcessedPreview) {
       elements.villagerProcessedPreview.src = result.villagerProcessed || '';
@@ -998,6 +1135,7 @@ async function testOcrNow() {
       `OCR ${translateOcrStatus(result.status)}`,
       `Dorfb. ${result.villagerCount ?? '-'}`,
       `Sicherheit Dorfb. ${result.villagerConfidence ?? 0}`,
+      result.loadingScreen ? `Loading ${formatLoadingScreenProbe(result.loadingScreen)}` : '',
       resourceSummary ? `Rohstoffe ${resourceSummary}` : '',
       `Rohtext "${result.villagerText || '-'}"`
     ].filter(Boolean).join(' / ');
@@ -1045,6 +1183,21 @@ function renderVariants(variants) {
   elements.ocrVariants.replaceChildren(...rows);
 }
 
+function formatLoadingScreenProbe(loadingScreen) {
+  if (!loadingScreen) {
+    return '-';
+  }
+
+  if (loadingScreen.status === 'detected') {
+    const self = loadingScreen.self?.civ || '-';
+    const enemies = (loadingScreen.enemies || []).map((enemy) => enemy.civ).filter(Boolean).join(', ') || '-';
+    return `${self} vs ${enemies}`;
+  }
+
+  const raw = String(loadingScreen.rawText || '').trim().replace(/\s+/g, ' ');
+  return raw ? `kein Match "${raw.slice(0, 48)}"` : 'kein Text';
+}
+
 function startLiveTest() {
   stopLiveTest();
   testOcrNow();
@@ -1062,6 +1215,7 @@ function stopLiveTest() {
 
 const regionButtonMap = {
   topBarRegion: 'selectTopBarRegion',
+  loadingScreenRegion: 'selectLoadingScreenRegion',
   villagerRegion: 'selectVillagerRegion',
   foodVilRegion: 'selectFoodVilRegion',
   woodVilRegion: 'selectWoodVilRegion',

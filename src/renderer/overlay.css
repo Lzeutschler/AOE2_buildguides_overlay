@@ -107,6 +107,10 @@ body {
   list-style: none;
 }
 
+.step-list[hidden] {
+  display: none;
+}
+
 .step-list li {
   display: grid;
   grid-template-columns: 64px 1fr;
@@ -168,4 +172,52 @@ body {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.advice-list {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 9px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.advice-list[hidden] {
+  display: none;
+}
+
+.advice-list section {
+  min-height: 0;
+  padding: 9px;
+  border: 1px solid rgba(196, 154, 66, 0.24);
+  border-radius: 6px;
+  background: rgba(255, 239, 199, 0.08);
+  overflow: hidden;
+}
+
+.advice-list h2 {
+  margin: 0 0 6px;
+  color: #f4c15e;
+  font-size: 13px;
+}
+
+.advice-list ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.advice-list li {
+  display: grid;
+  gap: 2px;
+  color: rgba(255, 243, 210, 0.88);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.advice-list strong {
+  color: #fff3d2;
+  font-size: 12px;
 }
