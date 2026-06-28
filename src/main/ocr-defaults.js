@@ -1,7 +1,6 @@
 const DEFAULT_OCR_REGIONS = {
   topBarRegion: { x: 0, y: 0, width: 1, height: 0.075 },
   villagerRegion: { x: 0.224, y: 0.029, width: 0.018, height: 0.022 },
-  civRegion: { x: 0.83, y: 0.006, width: 0.15, height: 0.065 },
   // Per-resource villager counts share one baseline, glyph size and an equal
   // horizontal spacing (the small white number on each icon's bottom-right
   // corner). Calibrated as a single template from the 2560x1440 fixtures via
@@ -15,7 +14,6 @@ const DEFAULT_OCR_REGIONS = {
 const LEGACY_OCR_REGIONS = {
   topBarRegion: { x: 0, y: 0, width: 1, height: 0.075 },
   villagerRegion: { x: 0.265, y: 0.004, width: 0.04, height: 0.06 },
-  civRegion: { x: 0.83, y: 0.006, width: 0.15, height: 0.065 },
   foodVilRegion: { x: 0.052, y: 0.028, width: 0.028, height: 0.03 },
   woodVilRegion: { x: 0.108, y: 0.028, width: 0.028, height: 0.03 },
   goldVilRegion: { x: 0.164, y: 0.028, width: 0.028, height: 0.03 },
@@ -62,17 +60,19 @@ const SWAPPED_FOOD_WOOD_REGION_PAIRS = [
   }
 ];
 
+const RESOURCE_VILLAGER_REGION_KEYS = ['woodVilRegion', 'foodVilRegion', 'goldVilRegion', 'stoneVilRegion'];
+const MAX_TIGHT_RESOURCE_WIDTH = DEFAULT_OCR_REGIONS.woodVilRegion.width * 1.6;
+const MAX_TIGHT_RESOURCE_HEIGHT = DEFAULT_OCR_REGIONS.woodVilRegion.height * 1.7;
+
 const DEFAULT_OCR_SETTINGS = {
   enabled: false,
   status: 'idle',
   lastText: '',
   lastError: '',
   intervalMs: 5000,
-  civIntervalMs: 60000,
   captureProvider: 'auto',
   captureIntervalMs: 2500,
   startupProbeIntervalMs: 1000,
-  civReadOnce: true,
   minConfidence: 55,
   stableReadCount: 2,
   imageScale: 6,
@@ -124,6 +124,12 @@ function migrateLegacyOcrRegions(ocr) {
     migrated.woodVilRegion = DEFAULT_OCR_REGIONS.woodVilRegion;
   }
 
+  if (hasStockpileInclusiveResourceRegion(migrated)) {
+    for (const key of RESOURCE_VILLAGER_REGION_KEYS) {
+      migrated[key] = DEFAULT_OCR_REGIONS[key];
+    }
+  }
+
   for (const key of Object.keys(DEFAULT_OCR_REGIONS)) {
     if (
       sameRegion(migrated[key], LEGACY_OCR_REGIONS[key])
@@ -137,6 +143,18 @@ function migrateLegacyOcrRegions(ocr) {
   }
 
   return migrated;
+}
+
+function hasStockpileInclusiveResourceRegion(ocr) {
+  return RESOURCE_VILLAGER_REGION_KEYS.some((key) => {
+    const region = ocr[key];
+    if (!region) {
+      return false;
+    }
+
+    return Number(region.width) > MAX_TIGHT_RESOURCE_WIDTH
+      || Number(region.height) > MAX_TIGHT_RESOURCE_HEIGHT;
+  });
 }
 
 function isKnownFoodWoodSwap(ocr) {

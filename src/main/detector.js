@@ -29,25 +29,21 @@ const RESOURCE_KEYS = ['food', 'wood', 'gold', 'stone'];
 // Slash is included so a population read like "9/15" can be split; we keep the
 // integer before the slash (current population) via parseLeadingCount.
 const VILLAGER_WHITELIST = '0123456789/';
-const CIV_WHITELIST = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ';
 const VILLAGER_DIAG_THRESHOLDS = [110, 140, 150, 170, 180, 200];
 const VILLAGER_DIAG_INVERTS = [true, false];
 const VILLAGER_DIAG_PAGE_SEG_MODES = ['7', '13'];
 
 class Detector extends EventEmitter {
-  constructor({ desktopCapturer, screen, nativeImage, civs = [] }) {
+  constructor({ desktopCapturer, screen, nativeImage }) {
     super();
     this.desktopCapturer = desktopCapturer;
     this.screen = screen;
     this.captureProvider = createCaptureProvider({ nativeImage });
-    this.civs = civs;
     this.timer = null;
     this.lastTickAt = 0;
-    this.lastCivOcrAt = 0;
     this.lastTopBarAt = 0;
     this.lastProcessCheckAt = 0;
     this.lastVillagerHash = null;
-    this.civLocked = false;
     this.cachedAoeRunning = false;
     this.ocrInProgress = false;
     this.ocrWorker = null;
@@ -58,8 +54,7 @@ class Detector extends EventEmitter {
     };
     this.lastEmittedVillagerCount = null;
     this.stableReads = {
-      villager: { value: null, count: 0 },
-      civ: { value: null, count: 0 }
+      villager: { value: null, count: 0 }
     };
     this.state = {
       aoeRunning: false,
@@ -111,19 +106,16 @@ class Detector extends EventEmitter {
         ...this.state.ocr,
         ...(settings.ocr || {}),
         intervalMs: clampNumber(settings.ocr?.intervalMs, this.state.ocr.intervalMs, 5000, 20000),
-        civIntervalMs: clampNumber(settings.ocr?.civIntervalMs, this.state.ocr.civIntervalMs, 15000, 300000),
         captureProvider: ['auto', 'node-screenshots'].includes(settings.ocr?.captureProvider)
           ? settings.ocr.captureProvider
           : this.state.ocr.captureProvider,
         captureIntervalMs: clampNumber(settings.ocr?.captureIntervalMs, this.state.ocr.captureIntervalMs, 1000, 10000),
         startupProbeIntervalMs: clampNumber(settings.ocr?.startupProbeIntervalMs, this.state.ocr.startupProbeIntervalMs, 500, 10000),
-        civReadOnce: settings.ocr?.civReadOnce === undefined ? this.state.ocr.civReadOnce : Boolean(settings.ocr.civReadOnce),
         minConfidence: clampNumber(settings.ocr?.minConfidence, this.state.ocr.minConfidence, 0, 100),
         stableReadCount: clampNumber(settings.ocr?.stableReadCount, this.state.ocr.stableReadCount, 1, 5),
         imageScale: clampNumber(settings.ocr?.imageScale, this.state.ocr.imageScale, 1, 6),
         topBarRegion: normalizeRegion(settings.ocr?.topBarRegion, this.state.ocr.topBarRegion),
         villagerRegion: normalizeRegion(settings.ocr?.villagerRegion, this.state.ocr.villagerRegion),
-        civRegion: normalizeRegion(settings.ocr?.civRegion, this.state.ocr.civRegion),
         foodVilRegion: normalizeRegion(settings.ocr?.foodVilRegion, this.state.ocr.foodVilRegion),
         woodVilRegion: normalizeRegion(settings.ocr?.woodVilRegion, this.state.ocr.woodVilRegion),
         goldVilRegion: normalizeRegion(settings.ocr?.goldVilRegion, this.state.ocr.goldVilRegion),
@@ -254,13 +246,10 @@ class Detector extends EventEmitter {
     nextState.captureStats = createCaptureStats(this.captureProvider.activeProvider);
     nextState.captureProvider = this.captureProvider.activeProvider;
     this.lastVillagerHash = null;
-    this.lastCivOcrAt = 0;
     this.lastTopBarAt = 0;
-    this.civLocked = false;
     this.anchorVillagerModel(getStartVillagers(nextState.civ));
     this.stableReads = {
-      villager: { value: null, count: 0 },
-      civ: { value: null, count: 0 }
+      villager: { value: null, count: 0 }
     };
     this.lastResourceHashes = { food: null, wood: null, gold: null, stone: null };
     this.lastResourceVillagers = { food: null, wood: null, gold: null, stone: null };
@@ -279,7 +268,6 @@ class Detector extends EventEmitter {
       this.ocrInProgress = true;
       nextState.ocr.status = 'capturing';
       const read = await this.readCurrentFrame({
-        forceCiv: false,
         forceVillager: !nextState.inMatch,
         readResources: nextState.inMatch,
         includeImages: false
@@ -294,13 +282,10 @@ class Detector extends EventEmitter {
         return;
       }
 
-      const { villagerResult, civResult, villagerCount, detectedCiv, averageConfidence } = read;
+      const { villagerResult, villagerCount, averageConfidence } = read;
       const villagerStable = villagerResult.skipped
         ? null
         : updateStableRead(this.stableReads.villager, villagerCount, nextState.ocr.stableReadCount);
-      const civStable = civResult.skipped
-        ? null
-        : updateStableRead(this.stableReads.civ, detectedCiv, nextState.ocr.stableReadCount);
       const topBarDetected = read.topBarDetected || (nextState.inMatch && villagerResult.skipped);
 
       if (topBarDetected) {
@@ -321,15 +306,12 @@ class Detector extends EventEmitter {
         nextState.sessionStatus = villagerResult.skipped ? 'Match erkannt, Ausschnitt unveraendert.' : 'Match erkannt.';
       }
 
-      nextState.ocr.lastText = [villagerResult.text, civResult.text].map((item) => item.trim()).filter(Boolean).join(' | ');
-      nextState.ocr.status = villagerResult.skipped ? 'unchanged' : Number.isFinite(villagerCount) || detectedCiv ? 'read' : 'uncertain';
+      nextState.ocr.lastText = (villagerResult.text || '').trim();
+      nextState.ocr.status = villagerResult.skipped ? 'unchanged' : Number.isFinite(villagerCount) ? 'read' : 'uncertain';
       nextState.ocr.lastRead = {
         villagerCount: Number.isFinite(villagerCount) ? villagerCount : null,
-        civ: detectedCiv,
         confidence: averageConfidence,
         stableVillagerCount: villagerStable,
-        stableCiv: civStable,
-        civSkipped: civResult.skipped,
         villagerSkipped: villagerResult.skipped,
         villagerHash: read.villagerHash
       };
@@ -346,12 +328,6 @@ class Detector extends EventEmitter {
         nextState.resourceVillagers = this.applyResourceVillagers(read.resourceVillagers, nextState.ocr.minConfidence);
       }
 
-      if (!civResult.skipped && civStable && civResult.confidence >= nextState.ocr.minConfidence) {
-        nextState.civ = civStable;
-        if (nextState.ocr.civReadOnce) {
-          this.civLocked = true;
-        }
-      }
     } catch (error) {
       nextState.ocr.status = 'error';
       nextState.ocr.lastError = error.message;
@@ -375,16 +351,10 @@ class Detector extends EventEmitter {
       const imageSize = { width: frame.width, height: frame.height };
       const topBarRegion = regionPercentToPixels(this.state.ocr.topBarRegion, imageSize);
       const villagerRegion = regionPercentToPixels(this.state.ocr.villagerRegion, imageSize);
-      const civRegion = regionPercentToPixels(this.state.ocr.civRegion, imageSize);
 
       const variants = await this.diagnoseVillager(frame, villagerRegion);
       const best = variants[0] || { text: '', digits: null, confidence: 0, image: '' };
 
-      const civResult = await this.recognize(
-        frame.cropDataUrl(civRegion, this.state.ocr.imageScale),
-        CIV_WHITELIST
-      );
-      const detectedCiv = matchKnownCiv(civResult.text, this.civs);
       const villagerCount = Number.isFinite(best.count) ? best.count : parseLeadingCount(best.text);
 
       const resources = {};
@@ -408,19 +378,15 @@ class Detector extends EventEmitter {
       }
 
       return {
-        status: Number.isFinite(villagerCount) || detectedCiv ? 'read' : 'uncertain',
+        status: Number.isFinite(villagerCount) ? 'read' : 'uncertain',
         displayId: display.id,
         imageSize,
         villagerText: (best.text || '').trim(),
-        civText: civResult.text.trim(),
         villagerCount: Number.isFinite(villagerCount) ? villagerCount : null,
-        civ: detectedCiv,
-        confidence: Math.round((best.confidence + civResult.confidence) / 2),
+        confidence: Math.round(best.confidence),
         villagerConfidence: Math.round(best.confidence),
-        civConfidence: Math.round(civResult.confidence),
         topBarRegion: frame.cropDataUrl(topBarRegion, 1),
         villagerRegion: frame.cropDataUrl(villagerRegion, 1),
-        civRegion: frame.cropDataUrl(civRegion, 1),
         villagerProcessed: best.image,
         villagerVariants: variants,
         resources
@@ -518,14 +484,12 @@ class Detector extends EventEmitter {
     const imageSize = { width: frame.width, height: frame.height };
     const topBarRegion = regionPercentToPixels(this.state.ocr.topBarRegion, imageSize);
     const villagerRegion = regionPercentToPixels(this.state.ocr.villagerRegion, imageSize);
-    const civRegion = regionPercentToPixels(this.state.ocr.civRegion, imageSize);
     const villagerRaw = frame.cropRaw(villagerRegion);
     const villagerHash = hashBuffer(villagerRaw);
     const villagerChanged = villagerHash !== this.lastVillagerHash;
     const villagerNeedsStableSample = this.stableReads.villager.count > 0
       && this.stableReads.villager.count < this.state.ocr.stableReadCount;
     const shouldReadVillager = options.forceVillager || villagerChanged || villagerNeedsStableSample;
-    const shouldReadCiv = options.forceCiv || this.shouldRunCivOcr();
     const villagerResult = shouldReadVillager
       ? await this.recognizeDigitRegion(frame, villagerRegion)
       : { text: '', confidence: 0, skipped: true };
@@ -534,16 +498,10 @@ class Detector extends EventEmitter {
       this.lastVillagerHash = villagerHash;
     }
 
-    const civResult = shouldReadCiv
-      ? await this.recognize(frame.cropDataUrl(civRegion, this.state.ocr.imageScale), CIV_WHITELIST)
-      : { text: '', confidence: 0, skipped: true };
     const villagerCount = Number.isFinite(villagerResult.count)
       ? villagerResult.count
       : parseLeadingCount(villagerResult.text);
-    const detectedCiv = civResult.skipped ? null : matchKnownCiv(civResult.text, this.civs);
-    const averageConfidence = civResult.skipped
-      ? Math.round(villagerResult.confidence)
-      : Math.round((villagerResult.confidence + civResult.confidence) / 2);
+    const averageConfidence = Math.round(villagerResult.confidence);
     const resourceVillagers = options.readResources
       ? await this.readResourceVillagers(frame, imageSize, options.forceResources)
       : null;
@@ -555,11 +513,8 @@ class Detector extends EventEmitter {
       durationMs: frame.durationMs,
       topBarImage: options.includeImages ? frame.cropDataUrl(topBarRegion, 1) : '',
       villagerImage: options.includeImages ? frame.cropDataUrl(villagerRegion, 1) : '',
-      civImage: options.includeImages ? frame.cropDataUrl(civRegion, 1) : '',
       villagerResult,
-      civResult,
       villagerCount,
-      detectedCiv,
       averageConfidence,
       villagerHash,
       resourceVillagers,
@@ -599,21 +554,6 @@ class Detector extends EventEmitter {
     return result;
   }
 
-  shouldRunCivOcr() {
-    if (this.state.ocr.civReadOnce && this.civLocked) {
-      return false;
-    }
-
-    const now = Date.now();
-    const interval = Math.min(this.state.ocr.civIntervalMs, 5000);
-    if (now - this.lastCivOcrAt < interval) {
-      return false;
-    }
-
-    this.lastCivOcrAt = now;
-    return true;
-  }
-
   async capturePreview() {
     const display = this.getSelectedDisplay();
     const source = await this.getScreenSource(display, { fullSize: true });
@@ -628,15 +568,13 @@ class Detector extends EventEmitter {
     const imageSize = source.thumbnail.getSize();
     const topBarImage = cropByPercent(source.thumbnail, imageSize, this.state.ocr.topBarRegion);
     const villagerImage = cropByPercent(source.thumbnail, imageSize, this.state.ocr.villagerRegion);
-    const civImage = cropByPercent(source.thumbnail, imageSize, this.state.ocr.civRegion);
 
     return {
       displayId: display.id,
       imageSize,
       fullFrame: source.thumbnail.toDataURL(),
       topBarRegion: topBarImage.toDataURL(),
-      villagerRegion: villagerImage.toDataURL(),
-      civRegion: civImage.toDataURL()
+      villagerRegion: villagerImage.toDataURL()
     };
   }
 
@@ -942,78 +880,6 @@ function parseLeadingCount(text) {
 
   const match = cleaned.match(/\d+/);
   return match ? Number.parseInt(match[0], 10) : NaN;
-}
-
-function matchKnownCiv(text, civs) {
-  const normalizedText = normalize(text);
-  if (!normalizedText) {
-    return null;
-  }
-
-  const candidates = civs.flatMap((civ) => {
-    if (typeof civ === 'string') {
-      return [{ name: civ, value: civ }];
-    }
-
-    return [civ.name, ...(civ.aliases || [])].map((value) => ({
-      name: civ.name,
-      value
-    }));
-  });
-
-  const direct = candidates.find((candidate) => {
-    const normalized = normalize(candidate.value);
-    return normalized && normalizedText.includes(normalized);
-  });
-
-  if (direct) {
-    return direct.name;
-  }
-
-  let best = { name: null, score: 0 };
-  for (const candidate of candidates) {
-    const normalized = normalize(candidate.value);
-    if (!normalized) {
-      continue;
-    }
-
-    const score = similarity(normalizedText, normalized);
-    if (score > best.score) {
-      best = { name: candidate.name, score };
-    }
-  }
-
-  return best.score >= 0.72 ? best.name : null;
-}
-
-function normalize(value) {
-  return String(value || '').toLowerCase().replace(/[^a-z]/g, '');
-}
-
-function similarity(left, right) {
-  const maxLength = Math.max(left.length, right.length);
-  if (maxLength === 0) {
-    return 1;
-  }
-
-  return 1 - levenshtein(left, right) / maxLength;
-}
-
-function levenshtein(left, right) {
-  const previous = Array.from({ length: right.length + 1 }, (_value, index) => index);
-
-  for (let i = 0; i < left.length; i += 1) {
-    const current = [i + 1];
-    for (let j = 0; j < right.length; j += 1) {
-      const insert = current[j] + 1;
-      const remove = previous[j + 1] + 1;
-      const replace = previous[j] + (left[i] === right[j] ? 0 : 1);
-      current.push(Math.min(insert, remove, replace));
-    }
-    previous.splice(0, previous.length, ...current);
-  }
-
-  return previous[right.length];
 }
 
 module.exports = {

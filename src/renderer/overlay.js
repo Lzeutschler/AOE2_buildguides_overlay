@@ -67,15 +67,18 @@ function renderStep(step, current, index, resourceVillagers) {
 }
 
 function formatStepProgress(step, resourceKey, index, resourceVillagers) {
-  const value = resourceVillagers?.[resourceKey];
-  if (index === 0 && Number.isFinite(value) && Number.isFinite(step.villagers)) {
-    return `${value}/${step.villagers}`;
+  const goal = step.resourceGoal;
+  const key = goal?.key || resourceKey;
+  const value = resourceVillagers?.[key];
+  if (index === 0 && Number.isFinite(value) && Number.isFinite(goal?.target)) {
+    return `${value}/${goal.target}`;
   }
 
   return `${step.villagers}`;
 }
 
 function getStepIcon(step) {
+  const resourceGoal = step?.resourceGoal?.key;
   const text = `${step?.title || ''} ${step?.instruction || ''}`.toLowerCase();
   const icons = {
     food: './assets/aoe2/resource-food.png',
@@ -83,6 +86,10 @@ function getStepIcon(step) {
     gold: './assets/aoe2/resource-gold.png',
     stone: './assets/aoe2/resource-stone.png'
   };
+
+  if (resourceGoal && icons[resourceGoal]) {
+    return { key: resourceGoal, src: icons[resourceGoal], label: resourceGoal };
+  }
 
   if (/(gold|mining camp|mining|mine|relic)/.test(text)) {
     return { key: 'gold', src: icons.gold, label: 'Gold' };

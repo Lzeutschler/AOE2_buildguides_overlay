@@ -135,7 +135,7 @@ function getCompanionDisplay() {
 
 function getPublicState() {
   const build = findBuild(buildData.builds, appState.selectedBuildId);
-  const progress = getBuildProgress(build, appState.villagerCount);
+  const progress = getBuildProgress(build, appState.villagerCount, appState.resourceVillagers);
   const recommendedBuilds = getRecommendedBuilds(buildData, appState.civ);
   const displays = screen.getAllDisplays().map((display) => ({
     id: display.id,
@@ -186,19 +186,16 @@ function updateState(partial, options = {}) {
       ...appState.ocr,
       ...ocr,
       intervalMs: clampNumber(ocr.intervalMs, appState.ocr.intervalMs, 5000, 20000),
-      civIntervalMs: clampNumber(ocr.civIntervalMs, appState.ocr.civIntervalMs, 15000, 300000),
       captureProvider: ['auto', 'node-screenshots'].includes(ocr.captureProvider)
         ? ocr.captureProvider
         : appState.ocr.captureProvider,
       captureIntervalMs: clampNumber(ocr.captureIntervalMs, appState.ocr.captureIntervalMs, 1000, 10000),
       startupProbeIntervalMs: clampNumber(ocr.startupProbeIntervalMs, appState.ocr.startupProbeIntervalMs, 500, 10000),
-      civReadOnce: ocr.civReadOnce === undefined ? appState.ocr.civReadOnce : Boolean(ocr.civReadOnce),
       minConfidence: clampNumber(ocr.minConfidence, appState.ocr.minConfidence, 0, 100),
       stableReadCount: clampNumber(ocr.stableReadCount, appState.ocr.stableReadCount, 1, 5),
       imageScale: clampNumber(ocr.imageScale, appState.ocr.imageScale, 1, 6),
       topBarRegion: normalizeRegion(ocr.topBarRegion, appState.ocr.topBarRegion),
       villagerRegion: normalizeRegion(ocr.villagerRegion, appState.ocr.villagerRegion),
-      civRegion: normalizeRegion(ocr.civRegion, appState.ocr.civRegion),
       foodVilRegion: normalizeRegion(ocr.foodVilRegion, appState.ocr.foodVilRegion),
       woodVilRegion: normalizeRegion(ocr.woodVilRegion, appState.ocr.woodVilRegion),
       goldVilRegion: normalizeRegion(ocr.goldVilRegion, appState.ocr.goldVilRegion),
@@ -211,8 +208,10 @@ function updateState(partial, options = {}) {
   }
 
   const recommendedBuilds = getRecommendedBuilds(buildData, appState.civ);
-  const hasSelected = recommendedBuilds.some((build) => build.id === appState.selectedBuildId);
-  if (!hasSelected && recommendedBuilds[0]) {
+  const hasSelected = buildData.builds.some((build) => build.id === appState.selectedBuildId);
+  const civChanged = Object.prototype.hasOwnProperty.call(rest, 'civ')
+    && !Object.prototype.hasOwnProperty.call(rest, 'selectedBuildId');
+  if ((civChanged || !hasSelected) && recommendedBuilds[0]) {
     appState.selectedBuildId = recommendedBuilds[0].id;
   }
 
@@ -477,7 +476,7 @@ app.whenReady().then(() => {
   createOverlayWindow();
   applyOverlayWindowState();
 
-  detector = new Detector({ desktopCapturer, screen, nativeImage, civs: civData.civilizations });
+  detector = new Detector({ desktopCapturer, screen, nativeImage });
   syncDetectorSettings();
   detector.on('state', (detectorState) => {
     const wasAoeRunning = appState.aoeRunning;
@@ -496,10 +495,6 @@ app.whenReady().then(() => {
 
     if (appState.detectionMode === 'ocr' && detectorState.resourceVillagers) {
       detectorUpdate.resourceVillagers = detectorState.resourceVillagers;
-    }
-
-    if (appState.detectionMode === 'ocr' && detectorState.civ) {
-      detectorUpdate.civ = detectorState.civ;
     }
 
     updateState(detectorUpdate, { persist: false });
@@ -712,7 +707,6 @@ function syncDetectorSettings() {
 
   detector.updateSettings({
     detectionMode: appState.detectionMode,
-    civ: appState.civ,
     selectedDisplayId: appState.selectedDisplayId,
     villagerCount: appState.villagerCount,
     ocr: appState.ocr
@@ -749,19 +743,16 @@ function updateStateFromSettings(settings) {
       ...appState.ocr,
       ...migratedOcr,
       intervalMs: clampNumber(migratedOcr.intervalMs, appState.ocr.intervalMs, 5000, 20000),
-      civIntervalMs: clampNumber(migratedOcr.civIntervalMs, appState.ocr.civIntervalMs, 15000, 300000),
       captureProvider: ['auto', 'node-screenshots'].includes(migratedOcr.captureProvider)
         ? migratedOcr.captureProvider
         : appState.ocr.captureProvider,
       captureIntervalMs: clampNumber(migratedOcr.captureIntervalMs, appState.ocr.captureIntervalMs, 1000, 10000),
       startupProbeIntervalMs: clampNumber(migratedOcr.startupProbeIntervalMs, appState.ocr.startupProbeIntervalMs, 500, 10000),
-      civReadOnce: migratedOcr.civReadOnce === undefined ? appState.ocr.civReadOnce : Boolean(migratedOcr.civReadOnce),
       minConfidence: clampNumber(migratedOcr.minConfidence, appState.ocr.minConfidence, 0, 100),
       stableReadCount: clampNumber(migratedOcr.stableReadCount, appState.ocr.stableReadCount, 1, 5),
       imageScale: clampNumber(migratedOcr.imageScale, appState.ocr.imageScale, 1, 6),
       topBarRegion: normalizeRegion(migratedOcr.topBarRegion, appState.ocr.topBarRegion),
       villagerRegion: normalizeRegion(migratedOcr.villagerRegion, appState.ocr.villagerRegion),
-      civRegion: normalizeRegion(migratedOcr.civRegion, appState.ocr.civRegion),
       foodVilRegion: normalizeRegion(migratedOcr.foodVilRegion, appState.ocr.foodVilRegion),
       woodVilRegion: normalizeRegion(migratedOcr.woodVilRegion, appState.ocr.woodVilRegion),
       goldVilRegion: normalizeRegion(migratedOcr.goldVilRegion, appState.ocr.goldVilRegion),

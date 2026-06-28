@@ -12,8 +12,19 @@ const elements = {
   settingsView: $('#settingsView'),
   statusText: $('#statusText'),
   gameStatus: $('#gameStatus'),
+  buildChooser: $('#buildChooser'),
+  buildRunner: $('#buildRunner'),
   civSelect: $('#civSelect'),
-  buildSelect: $('#buildSelect'),
+  genericPick: $('#genericPick'),
+  recommendedBuildCards: $('#recommendedBuildCards'),
+  allBuildCards: $('#allBuildCards'),
+  allBuildCount: $('#allBuildCount'),
+  buildSearch: $('#buildSearch'),
+  recommendationTitle: $('#recommendationTitle'),
+  recommendationMeta: $('#recommendationMeta'),
+  backToBuildChooser: $('#backToBuildChooser'),
+  runnerCiv: $('#runnerCiv'),
+  runnerBuild: $('#runnerBuild'),
   customBuildStatus: $('#customBuildStatus'),
   buildImportStatus: $('#buildImportStatus'),
   importBuilds: $('#importBuilds'),
@@ -46,7 +57,6 @@ const elements = {
   topBarPreview: $('#topBarPreview'),
   villagerPreview: $('#villagerPreview'),
   villagerProcessedPreview: $('#villagerProcessedPreview'),
-  civPreview: $('#civPreview'),
   ocrVariants: $('#ocrVariants'),
   calibZoom: $('#calibZoom'),
   calibZoomValue: $('#calibZoomValue'),
@@ -57,17 +67,14 @@ const elements = {
     captureProvider: $('#ocrCaptureProvider'),
     captureIntervalMs: $('#ocrCaptureIntervalMs'),
     startupProbeIntervalMs: $('#ocrStartupProbeIntervalMs'),
-    civIntervalMs: $('#ocrCivIntervalMs'),
     minConfidence: $('#ocrMinConfidence'),
     stableReadCount: $('#ocrStableReadCount'),
     imageScale: $('#ocrImageScale')
   },
-  ocrCivReadOnce: $('#ocrCivReadOnce'),
   screenCalibrator: $('#screenCalibrator'),
   screenPreview: $('#screenPreview'),
   selectTopBarRegion: $('#selectTopBarRegion'),
   selectVillagerRegion: $('#selectVillagerRegion'),
-  selectCivRegion: $('#selectCivRegion'),
   selectFoodVilRegion: $('#selectFoodVilRegion'),
   selectWoodVilRegion: $('#selectWoodVilRegion'),
   selectGoldVilRegion: $('#selectGoldVilRegion'),
@@ -87,7 +94,6 @@ const elements = {
   regionBoxes: {
     topBarRegion: $('#topBarBox'),
     villagerRegion: $('#villagerBox'),
-    civRegion: $('#civBox'),
     foodVilRegion: $('#foodVilBox'),
     woodVilRegion: $('#woodVilBox'),
     goldVilRegion: $('#goldVilBox'),
@@ -105,12 +111,6 @@ const elements = {
       y: $('#villagerRegionY'),
       width: $('#villagerRegionWidth'),
       height: $('#villagerRegionHeight')
-    },
-    civRegion: {
-      x: $('#civRegionX'),
-      y: $('#civRegionY'),
-      width: $('#civRegionWidth'),
-      height: $('#civRegionHeight')
     },
     foodVilRegion: {
       x: $('#foodVilRegionX'),
@@ -150,12 +150,6 @@ const elements = {
       width: $('#villagerRegionWidthpx'),
       height: $('#villagerRegionHeightpx')
     },
-    civRegion: {
-      x: $('#civRegionXpx'),
-      y: $('#civRegionYpx'),
-      width: $('#civRegionWidthpx'),
-      height: $('#civRegionHeightpx')
-    },
     foodVilRegion: {
       x: $('#foodVilRegionXpx'),
       y: $('#foodVilRegionYpx'),
@@ -194,7 +188,6 @@ const elements = {
 const defaultRegions = {
   topBarRegion: { x: 0, y: 0, width: 1, height: 0.075 },
   villagerRegion: { x: 0.224, y: 0.029, width: 0.018, height: 0.022 },
-  civRegion: { x: 0.83, y: 0.006, width: 0.15, height: 0.065 },
   woodVilRegion: { x: 0.013281, y: 0.032639, width: 0.011719, height: 0.013194 },
   foodVilRegion: { x: 0.066016, y: 0.032639, width: 0.011719, height: 0.013194 },
   goldVilRegion: { x: 0.11875, y: 0.032639, width: 0.011719, height: 0.013194 },
@@ -205,8 +198,6 @@ const defaultOcrSettings = {
   captureProvider: 'auto',
   captureIntervalMs: 2500,
   startupProbeIntervalMs: 1000,
-  civIntervalMs: 60000,
-  civReadOnce: true,
   minConfidence: 55,
   stableReadCount: 2,
   imageScale: 6
@@ -220,6 +211,7 @@ let calibPan = { x: 0, y: 0 };
 let lastImageSize = null;
 let panState = null;
 let liveTestTimer = null;
+let buildRunnerOpen = false;
 
 window.aoeOverlay.getState().then(render);
 window.aoeOverlay.onState(render);
@@ -236,8 +228,19 @@ listen(elements.civSelect, 'change', () => {
   window.aoeOverlay.updateState({ civ: elements.civSelect.value });
 });
 
-listen(elements.buildSelect, 'change', () => {
-  window.aoeOverlay.updateState({ selectedBuildId: elements.buildSelect.value });
+listen(elements.genericPick, 'click', () => {
+  window.aoeOverlay.updateState({ civ: 'Generic' });
+});
+
+listen(elements.backToBuildChooser, 'click', () => {
+  buildRunnerOpen = false;
+  renderBuildStage();
+});
+
+listen(elements.buildSearch, 'input', () => {
+  if (currentState) {
+    renderBuildChooser(currentState);
+  }
 });
 
 listen(elements.importBuilds, 'click', async () => {
@@ -348,14 +351,6 @@ for (const [settingName, input] of Object.entries(elements.ocrSettings)) {
   });
 }
 
-listen(elements.ocrCivReadOnce, 'change', () => {
-  window.aoeOverlay.updateState({
-    ocr: {
-      civReadOnce: elements.ocrCivReadOnce.checked
-    }
-  });
-});
-
 for (const [regionName, inputs] of Object.entries(elements.regions)) {
   for (const input of Object.values(inputs)) {
     listen(input, 'change', () => {
@@ -388,10 +383,6 @@ listen(elements.selectTopBarRegion, 'click', () => {
 
 listen(elements.selectVillagerRegion, 'click', () => {
   setActiveRegion('villagerRegion');
-});
-
-listen(elements.selectCivRegion, 'click', () => {
-  setActiveRegion('civRegion');
 });
 
 listen(elements.selectFoodVilRegion, 'click', () => {
@@ -536,10 +527,6 @@ for (const img of document.querySelectorAll('.preview-grid img')) {
 function render(state) {
   currentState = state;
   renderSelect(elements.civSelect, state.civs.map((civ) => ({ value: civ, label: civ })), state.civ);
-  renderSelect(elements.buildSelect, state.recommendedBuilds.map((build) => ({
-    value: build.id,
-    label: `${build.name} - ${build.style}`
-  })), state.selectedBuildId);
   renderSelect(elements.displaySelect, state.displays.map((display) => ({
     value: String(display.id),
     label: `${display.primary ? 'Hauptbildschirm' : 'Bildschirm'} ${display.id}`
@@ -558,20 +545,23 @@ function render(state) {
 
   elements.gameStatus.textContent = state.inMatch ? 'Match erkannt' : state.aoeRunning ? 'AOE2 offen' : 'AOE2 offline';
   elements.gameStatus.classList.toggle('online', state.aoeRunning);
-  elements.statusText.textContent = `${state.civ} / ${state.build.name} / ${state.sessionStatus || 'Bildschirm-Erkennung'}`;
+  elements.statusText.textContent = `${state.civ} / ${cleanBuildName(state.build.name)} / ${state.sessionStatus || 'Bildschirm-Erkennung'}`;
 
   elements.ocrStatus.textContent = translateOcrStatus(state.ocr?.status || 'idle');
   elements.ocrText.textContent = formatOcrText(state);
   writeOcrSettings(state.ocr || defaultOcrSettings);
-  elements.ocrCivReadOnce.checked = Boolean(state.ocr?.civReadOnce ?? defaultOcrSettings.civReadOnce);
   for (const regionName of Object.keys(elements.regions)) {
     writeRegion(regionName, state.ocr?.[regionName] || defaultRegions[regionName]);
   }
   renderResourceVillagers(state.resourceVillagers);
   renderRegionBoxes(state);
+  renderBuildChooser(state);
+  renderBuildStage();
 
-  elements.buildName.textContent = state.build.name;
+  elements.buildName.textContent = cleanBuildName(state.build.name);
   elements.buildSummary.textContent = state.build.summary;
+  elements.runnerCiv.textContent = state.civ;
+  elements.runnerBuild.textContent = cleanBuildName(state.build.name);
 
   const percent = Math.round((state.progress.progress || 0) * 100);
   elements.progressPercent.textContent = `${percent}%`;
@@ -587,6 +577,144 @@ function render(state) {
   elements.stepInstruction.textContent = step.instruction;
 
   elements.timeline.replaceChildren(...state.build.steps.map((item) => renderStep(item, step, next, state.villagerCount)));
+}
+
+function renderBuildStage() {
+  elements.buildChooser?.classList.toggle('hidden', buildRunnerOpen);
+  elements.buildRunner?.classList.toggle('active', buildRunnerOpen);
+}
+
+function renderBuildChooser(state) {
+  const recommended = (state.recommendedBuilds || []).slice(0, 3);
+  const recommendedIds = new Set(recommended.map((build) => build.id));
+  const query = (elements.buildSearch?.value || '').trim().toLowerCase();
+  const otherBuilds = (state.buildData?.builds || [])
+    .filter((build) => !recommendedIds.has(build.id))
+    .filter((build) => matchesBuildQuery(build, query))
+    .sort((left, right) => cleanBuildName(left.name).localeCompare(cleanBuildName(right.name)));
+
+  elements.recommendationTitle.textContent = state.civ === 'Generic'
+    ? '3 Generic Standardstarts'
+    : `3 Vorschlaege fuer ${state.civ}`;
+  elements.recommendationMeta.textContent = state.civ;
+  elements.recommendedBuildCards.replaceChildren(...recommended.map((build, index) => renderRecommendedBuild(build, state, index)));
+  elements.allBuildCount.textContent = `${otherBuilds.length} Builds`;
+  elements.allBuildCards.replaceChildren(...otherBuilds.map((build) => renderBuildRow(build, state)));
+}
+
+function renderRecommendedBuild(build, state, index) {
+  const card = document.createElement('button');
+  card.className = 'build-card recommended';
+  card.type = 'button';
+  card.classList.toggle('selected', build.id === state.selectedBuildId);
+  card.addEventListener('click', () => startBuild(build.id));
+
+  const rank = document.createElement('span');
+  rank.className = 'card-rank';
+  rank.textContent = `0${index + 1}`;
+
+  const body = document.createElement('div');
+  body.className = 'card-body';
+  const reason = document.createElement('span');
+  reason.className = 'kicker';
+  reason.textContent = getRecommendationReason(build, state.civ);
+  const title = document.createElement('strong');
+  title.textContent = cleanBuildName(build.name);
+  const summary = document.createElement('p');
+  summary.textContent = build.summary || build.style;
+  body.append(reason, title, summary);
+
+  const meta = document.createElement('div');
+  meta.className = 'card-meta';
+  meta.append(createTag(build.style), createTag(formatBuildCivs(build)));
+
+  card.append(rank, body, meta);
+  return card;
+}
+
+function renderBuildRow(build, state) {
+  const row = document.createElement('button');
+  row.className = 'build-row';
+  row.type = 'button';
+  row.classList.toggle('selected', build.id === state.selectedBuildId);
+  row.addEventListener('click', () => startBuild(build.id));
+
+  const title = document.createElement('strong');
+  title.textContent = cleanBuildName(build.name);
+  const summary = document.createElement('p');
+  summary.textContent = build.summary || build.style;
+
+  const meta = document.createElement('div');
+  meta.className = 'row-meta';
+  meta.append(createTag(build.style), createTag(formatBuildCivs(build)));
+
+  row.append(title, summary, meta);
+  return row;
+}
+
+function startBuild(buildId) {
+  buildRunnerOpen = true;
+  window.aoeOverlay.updateState({ selectedBuildId: buildId });
+  renderBuildStage();
+}
+
+function createTag(text) {
+  const tag = document.createElement('span');
+  tag.className = 'soft-badge';
+  tag.textContent = text || '-';
+  return tag;
+}
+
+function cleanBuildName(name) {
+  return String(name || '').replace(/^Hera\s+/i, '');
+}
+
+function formatBuildCivs(build) {
+  const civs = Array.isArray(build.civs) ? build.civs.filter(Boolean) : [];
+  if (civs.length === 0) {
+    return 'Generic';
+  }
+
+  if (civs.length <= 3) {
+    return civs.join(', ');
+  }
+
+  return `${civs.slice(0, 2).join(', ')} +${civs.length - 2}`;
+}
+
+function getRecommendationReason(build, civ) {
+  if (civ === 'Generic') {
+    return 'Generic Core';
+  }
+
+  const normalizedCiv = normalizeText(civ);
+  const civs = Array.isArray(build.civs) ? build.civs : [];
+  if (civs.some((name) => normalizeText(name) === normalizedCiv)) {
+    return `Empfohlen fuer ${civ}`;
+  }
+
+  if (normalizeText(build.name).includes(normalizedCiv)) {
+    return 'Civ im Buildtitel';
+  }
+
+  return 'Solider Fallback';
+}
+
+function matchesBuildQuery(build, query) {
+  if (!query) {
+    return true;
+  }
+
+  return [
+    build.name,
+    build.style,
+    build.summary,
+    ...(build.civs || [])
+  ].some((value) => String(value || '').toLowerCase().includes(query));
+}
+
+function normalizeText(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
 function setView(viewName) {
@@ -665,6 +793,7 @@ function renderStep(item, current, next, villagerCount) {
 }
 
 function getStepIcon(step) {
+  const resourceGoal = step?.resourceGoal?.key;
   const text = `${step?.title || ''} ${step?.instruction || ''}`.toLowerCase();
   const icons = {
     food: './assets/aoe2/resource-food.png',
@@ -672,6 +801,10 @@ function getStepIcon(step) {
     gold: './assets/aoe2/resource-gold.png',
     stone: './assets/aoe2/resource-stone.png'
   };
+
+  if (resourceGoal && icons[resourceGoal]) {
+    return { src: icons[resourceGoal], label: resourceGoal };
+  }
 
   if (/(gold|mining camp|mining|mine|relic)/.test(text)) {
     return { src: icons.gold, label: 'Gold' };
@@ -777,7 +910,7 @@ function formatOcrText(state) {
 
   const read = ocr.lastRead;
   const detail = read
-    ? `Sicherheit ${read.confidence ?? 0} / stabil ${read.stableVillagerCount ?? '-'} / ${read.stableCiv ?? '-'}`
+    ? `Sicherheit ${read.confidence ?? 0} / stabil ${read.stableVillagerCount ?? '-'}`
     : '';
   const stats = state.captureStats
     ? `${state.captureStats.provider || state.captureProvider || '-'} ${state.captureStats.lastCaptureMs ?? '-'}ms / Schnitt ${state.captureStats.averageCaptureMs ?? '-'}ms`
@@ -812,7 +945,6 @@ async function refreshPreview() {
 
     elements.topBarPreview.src = preview.topBarRegion;
     elements.villagerPreview.src = preview.villagerRegion;
-    elements.civPreview.src = preview.civRegion;
     elements.screenPreview.src = preview.fullFrame;
     if (preview.imageSize) {
       lastImageSize = preview.imageSize;
@@ -849,7 +981,6 @@ async function testOcrNow() {
 
     elements.topBarPreview.src = result.topBarRegion;
     elements.villagerPreview.src = result.villagerRegion;
-    elements.civPreview.src = result.civRegion;
     if (elements.villagerProcessedPreview) {
       elements.villagerProcessedPreview.src = result.villagerProcessed || '';
     }
@@ -867,9 +998,8 @@ async function testOcrNow() {
       `OCR ${translateOcrStatus(result.status)}`,
       `Dorfb. ${result.villagerCount ?? '-'}`,
       `Sicherheit Dorfb. ${result.villagerConfidence ?? 0}`,
-      `civ ${result.civ ?? '-'} (${result.civConfidence ?? 0})`,
       resourceSummary ? `Rohstoffe ${resourceSummary}` : '',
-      `Rohtext "${result.villagerText || '-'}" / "${result.civText || '-'}"`
+      `Rohtext "${result.villagerText || '-'}"`
     ].filter(Boolean).join(' / ');
     renderVariants(result.villagerVariants);
   } catch (error) {
@@ -933,7 +1063,6 @@ function stopLiveTest() {
 const regionButtonMap = {
   topBarRegion: 'selectTopBarRegion',
   villagerRegion: 'selectVillagerRegion',
-  civRegion: 'selectCivRegion',
   foodVilRegion: 'selectFoodVilRegion',
   woodVilRegion: 'selectWoodVilRegion',
   goldVilRegion: 'selectGoldVilRegion',

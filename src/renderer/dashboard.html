@@ -25,42 +25,82 @@
       </nav>
 
       <section id="mainView" class="view active">
-        <section class="layout">
-          <aside class="panel controls">
-            <div class="field">
+        <section id="buildChooser" class="build-chooser">
+          <section class="panel civ-draft">
+            <div class="draft-copy">
+              <span class="kicker">Build-Auswahl</span>
+              <h2>Waehle deine Civ, starte den passenden Plan.</h2>
+              <p>Die App schlaegt dir drei Builds vor. Generic zeigt die soliden Standardstarts.</p>
+            </div>
+            <div class="civ-picker">
               <label for="civSelect">Zivilisation</label>
-              <select id="civSelect"></select>
-            </div>
-
-            <div class="field">
-              <label for="buildSelect">Schlachtplan</label>
-              <select id="buildSelect"></select>
-            </div>
-
-            <div class="build-tools">
-              <div class="placement-header">
-                <strong>Eigene Builds</strong>
-                <span id="customBuildStatus">0 geladen</span>
+              <div class="civ-select-row">
+                <select id="civSelect"></select>
+                <button id="genericPick" class="secondary-button inline" type="button">Generic</button>
               </div>
-              <div class="tool-row">
-                <button id="importBuilds" type="button">Importieren</button>
-                <button id="exportBuilds" type="button">Exportieren</button>
+            </div>
+          </section>
+
+          <section class="panel recommendation-panel">
+            <div class="section-heading">
+              <div>
+                <span class="kicker">Vorschlaege</span>
+                <h2 id="recommendationTitle">3 passende Builds</h2>
               </div>
-              <span id="buildImportStatus" class="preview-status"></span>
+              <span id="recommendationMeta" class="soft-badge">Generic</span>
             </div>
+            <div id="recommendedBuildCards" class="recommendation-grid"></div>
+          </section>
 
-            <div class="ocr-box">
-              <strong>Bildschirm-Erkennung</strong>
-              <span id="ocrStatus">wartet</span>
-              <code id="ocrText"></code>
-            </div>
+          <section class="chooser-grid">
+            <section class="panel all-builds-panel">
+              <div class="section-heading">
+                <div>
+                  <span class="kicker">Bibliothek</span>
+                  <h2>Alle anderen Builds</h2>
+                </div>
+                <span id="allBuildCount" class="soft-badge">0 Builds</span>
+              </div>
+              <input id="buildSearch" class="build-search" type="search" placeholder="Build suchen">
+              <div id="allBuildCards" class="all-build-list"></div>
+            </section>
 
-            <div class="toggles">
-              <label><input type="checkbox" id="overlayEnabled" checked> Spiel-Overlay anzeigen</label>
-              <label><input type="checkbox" id="overlayOnlyWhenAoe" checked> Overlay nur bei AOE2</label>
-              <label><input type="checkbox" id="autoShowDashboardOnAoe" checked> Dashboard bei AOE2 anzeigen</label>
+            <aside class="panel controls setup-tools">
+              <div class="build-tools">
+                <div class="placement-header">
+                  <strong>Eigene Builds</strong>
+                  <span id="customBuildStatus">0 geladen</span>
+                </div>
+                <div class="tool-row">
+                  <button id="importBuilds" type="button">Importieren</button>
+                  <button id="exportBuilds" type="button">Exportieren</button>
+                </div>
+                <span id="buildImportStatus" class="preview-status"></span>
+              </div>
+
+              <div class="ocr-box">
+                <strong>Bildschirm-Erkennung</strong>
+                <span id="ocrStatus">wartet</span>
+                <code id="ocrText"></code>
+              </div>
+
+              <div class="toggles">
+                <label><input type="checkbox" id="overlayEnabled" checked> Spiel-Overlay anzeigen</label>
+                <label><input type="checkbox" id="overlayOnlyWhenAoe" checked> Overlay nur bei AOE2</label>
+                <label><input type="checkbox" id="autoShowDashboardOnAoe" checked> Dashboard bei AOE2 anzeigen</label>
+              </div>
+            </aside>
+          </section>
+        </section>
+
+        <section id="buildRunner" class="build-runner">
+          <section class="runner-toolbar">
+            <button id="backToBuildChooser" class="secondary-button inline" type="button">Build wechseln</button>
+            <div>
+              <span id="runnerCiv" class="soft-badge">Generic</span>
+              <strong id="runnerBuild">Schlachtplan</strong>
             </div>
-          </aside>
+          </section>
 
           <section class="panel build-panel">
             <div class="build-header">
@@ -135,8 +175,8 @@
           <section class="panel settings-panel">
             <div class="settings-header">
               <div>
-                <h2>OCR-Kalibrierung</h2>
-                <p>Die obere AOE2-Leiste wird als Hauptbereich aufgenommen. Dorfbewohner- und Civ-Boxen liegen darin als gezielte OCR-Ausschnitte.</p>
+              <h2>OCR-Kalibrierung</h2>
+              <p>Die obere AOE2-Leiste wird als Hauptbereich aufgenommen. Dorfbewohner- und Rohstoffzahlen liegen darin als gezielte OCR-Ausschnitte.</p>
               </div>
               <button id="refreshPreview" class="secondary-button inline" type="button">Vorschau aktualisieren</button>
             </div>
@@ -148,13 +188,9 @@
               </select></label>
               <label>Live-Intervall ms<input id="ocrCaptureIntervalMs" type="number" min="1000" max="10000" step="100"></label>
               <label>Start-Probe ms<input id="ocrStartupProbeIntervalMs" type="number" min="500" max="10000" step="100"></label>
-              <label>Civ-Intervall ms<input id="ocrCivIntervalMs" type="number" min="15000" max="300000" step="1000"></label>
               <label>Min. Sicherheit<input id="ocrMinConfidence" type="number" min="0" max="100" step="1"></label>
               <label>Stabile Treffer<input id="ocrStableReadCount" type="number" min="1" max="5" step="1"></label>
               <label>OCR-Skalierung<input id="ocrImageScale" type="number" min="1" max="6" step="1"></label>
-            </div>
-            <div class="toggles compact">
-              <label><input type="checkbox" id="ocrCivReadOnce" checked> Civ pro Match nur einmal lesen</label>
             </div>
 
             <div class="region" data-region="topBarRegion">
@@ -182,20 +218,6 @@
                 <label>Y px<input id="villagerRegionYpx" type="number" min="0" step="1"></label>
                 <label>B px<input id="villagerRegionWidthpx" type="number" min="1" step="1"></label>
                 <label>H px<input id="villagerRegionHeightpx" type="number" min="1" step="1"></label>
-              </div>
-            </div>
-
-            <div class="region" data-region="civRegion">
-              <strong>Zivilisation / Menuebereich</strong>
-              <div class="region-grid">
-                <label>X %<input id="civRegionX" type="number" min="0" max="100" step="0.1"></label>
-                <label>Y %<input id="civRegionY" type="number" min="0" max="100" step="0.1"></label>
-                <label>B %<input id="civRegionWidth" type="number" min="0.1" max="100" step="0.1"></label>
-                <label>H %<input id="civRegionHeight" type="number" min="0.1" max="100" step="0.1"></label>
-                <label>X px<input id="civRegionXpx" type="number" min="0" step="1"></label>
-                <label>Y px<input id="civRegionYpx" type="number" min="0" step="1"></label>
-                <label>B px<input id="civRegionWidthpx" type="number" min="1" step="1"></label>
-                <label>H px<input id="civRegionHeightpx" type="number" min="1" step="1"></label>
               </div>
             </div>
 
@@ -270,7 +292,6 @@
           <div class="calibration-tools" role="group" aria-label="OCR-Bereichswerkzeug">
             <button id="selectTopBarRegion" class="tool-button active" type="button">Obere Leiste</button>
             <button id="selectVillagerRegion" class="tool-button" type="button">Dorfbewohner</button>
-            <button id="selectCivRegion" class="tool-button" type="button">Civ</button>
             <button id="selectFoodVilRegion" class="tool-button" type="button">Nahrung</button>
             <button id="selectWoodVilRegion" class="tool-button" type="button">Holz</button>
             <button id="selectGoldVilRegion" class="tool-button" type="button">Gold</button>
@@ -293,10 +314,6 @@
               </div>
               <div id="villagerBox" class="region-box villager-box">
                 <span>Dorfb.</span>
-                <i class="handle handle-se"></i>
-              </div>
-              <div id="civBox" class="region-box civ-box">
-                <span>Civ</span>
                 <i class="handle handle-se"></i>
               </div>
               <div id="foodVilBox" class="region-box food-box">
@@ -333,10 +350,6 @@
             <figure>
               <img id="villagerProcessedPreview" alt="Was die OCR sieht">
               <figcaption>Was die OCR sieht</figcaption>
-            </figure>
-            <figure>
-              <img id="civPreview" alt="OCR-Vorschau fuer Zivilisation">
-              <figcaption>Civ-/Menue-Ausschnitt</figcaption>
             </figure>
           </div>
 

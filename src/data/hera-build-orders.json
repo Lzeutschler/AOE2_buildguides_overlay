@@ -25,11 +25,9 @@
     "Turks": ["hera-fast-castle-unique-unit", "hera-turk-fast-imperial"],
     "Mongols": ["hera-fast-castle-unique-unit"],
     "Generic": [
-      "hera-one-stable-scouts",
+      "hera-fast-castle-unique-unit",
       "hera-one-range-archers",
-      "hera-feudal-drush",
-      "hera-fast-castle-boom",
-      "hera-fast-castle-unique-unit"
+      "hera-one-stable-scouts"
     ]
   },
   "builds": [
